@@ -18,11 +18,17 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Google;
 
+use ArtisanPackUI\Google\Contracts\ConfigurationRepository;
+use ArtisanPackUI\Google\OAuth\OAuthManager;
+use ArtisanPackUI\Google\Scopes\ScopeRegistry;
+use ArtisanPackUI\Google\Tokens\TokenManager;
+
 /**
- * Main Google class.
+ * Convenience aggregator for the Google package services.
  *
- * Add OAuth flow, token, and scope management methods here as the
- * package grows.
+ * Provides quick access to the configuration repository, scope
+ * registry, token manager, and OAuth manager. Also serves as the
+ * target of the `Google` facade and `google()` helper.
  *
  * @package    ArtisanPack_UI
  * @subpackage Google
@@ -31,5 +37,31 @@ namespace ArtisanPackUI\Google;
  */
 class Google
 {
-    // Add your package methods here
+    public function __construct(
+        protected ConfigurationRepository $config,
+        protected ScopeRegistry $scopes,
+        protected TokenManager $tokens,
+        protected OAuthManager $oauth,
+    ) {
+    }
+
+    public function config(): ConfigurationRepository
+    {
+        return $this->config;
+    }
+
+    public function scopes(): ScopeRegistry
+    {
+        return $this->scopes;
+    }
+
+    public function tokens(): TokenManager
+    {
+        return $this->tokens;
+    }
+
+    public function oauth(): OAuthManager
+    {
+        return $this->oauth;
+    }
 }
