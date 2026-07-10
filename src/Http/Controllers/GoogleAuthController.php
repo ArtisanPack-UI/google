@@ -15,6 +15,9 @@ namespace ArtisanPackUI\Google\Http\Controllers;
 
 use ArtisanPackUI\Google\Exceptions\OAuthException;
 use ArtisanPackUI\Google\OAuth\OAuthManager;
+use ArtisanPackUI\Google\Scopes\ScopeRegistry;
+use ArtisanPackUI\Google\Support\ConnectionState;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -26,8 +29,38 @@ use Illuminate\Routing\Controller;
  */
 class GoogleAuthController extends Controller
 {
-    public function __construct( protected OAuthManager $oauth )
+    public function __construct(
+        protected OAuthManager $oauth,
+        protected ScopeRegistry $scopes,
+    ) {
+    }
+
+    /**
+     * Return the current user's connection state as JSON.
+     *
+     * This is the data source for the React and Vue connection-management
+     * components shipped in `resources/js/`. Livewire consumes the same
+     * information through server-side rendering instead.
+     *
+     * @since 1.0.0
+     */
+    public function status( Request $request ): JsonResponse
     {
+        $user = $request->user();
+
+        if ( null === $user ) {
+            return new JsonResponse( [ 'message' => __( 'Unauthenticated.' ) ], 401 );
+        }
+
+        $state = ConnectionState::forUser( $user->getAuthIdentifier(), $this->scopes );
+
+        return new JsonResponse( $state->toArray() + [
+            'urls' => [
+                'connect'     => route( 'google.auth.connect' ),
+                'reauthorize' => route( 'google.auth.reauthorize' ),
+                'disconnect'  => route( 'google.auth.disconnect' ),
+            ],
+        ] );
     }
 
     /**
@@ -76,6 +109,63 @@ class GoogleAuthController extends Controller
         }
 
         return $this->redirectAfterConnect()->with( 'google.status', 'connected' );
+    }
+
+    /**
+     * Kick off an incremental-consent redirect for a user already connected.
+     *
+     * Only the scopes newly registered since the initial connection are
+     * requested. If nothing is missing the flow falls back to requesting the
+     * full union so the user still lands on a valid consent screen.
+     *
+     * @since 1.0.0
+     */
+    public function reauthorize( Request $request ): RedirectResponse
+    {
+        $user = $request->user();
+
+        if ( null === $user ) {
+            abort( 401 );
+        }
+
+        $state = ConnectionState::forUser( $user->getAuthIdentifier(), $this->scopes );
+
+        // No existing connection → this route is not the entry point for a
+        // fresh consent. Send the caller through /connect so onboarding, gating,
+        // and analytics that hang off google.auth.connect still fire.
+        if ( ! $state->isConnected ) {
+            return redirect()->route( 'google.auth.connect' );
+        }
+
+        $url = $this->oauth->reauthorizationUrl(
+            $user->getAuthIdentifier(),
+            $state->grantedScopes,
+        );
+
+        return redirect()->away( $url );
+    }
+
+    /**
+     * Mark the current user's connection disconnected.
+     *
+     * Local-only: does not attempt to revoke the token with Google. Callers
+     * who need remote revocation can hit the revoke endpoint separately.
+     *
+     * @since 1.0.0
+     */
+    public function disconnect( Request $request ): RedirectResponse
+    {
+        $user = $request->user();
+
+        if ( null === $user ) {
+            abort( 401 );
+        }
+
+        $state = ConnectionState::forUser( $user->getAuthIdentifier(), $this->scopes );
+
+        $state->connection?->markDisconnected( __( 'Disconnected by user.' ) );
+
+        return $this->redirectAfterConnect()->with( 'google.status', 'disconnected' );
     }
 
     /**

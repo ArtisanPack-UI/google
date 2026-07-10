@@ -140,6 +140,36 @@ it( 'tolerates a missing or malformed id_token by leaving identity columns null'
     expect( $connection->email )->toBeNull();
 } );
 
+it( 'preserves the existing refresh_token when Google omits one on an incremental regrant', function (): void {
+    // First call → full response with refresh_token. Second call → incremental
+    // regrant with no refresh_token (Google's normal behavior for reauth flows).
+    Http::fake( [
+        'oauth2.googleapis.com/*' => Http::sequence()
+            ->push( [
+                'access_token'  => 'a1',
+                'refresh_token' => 'r-initial',
+                'expires_in'    => 3600,
+            ] )
+            ->push( [
+                'access_token' => 'a2',
+                'expires_in'   => 3600,
+            ] ),
+    ] );
+
+    /** @var OAuthManager $oauth */
+    $oauth = app( OAuthManager::class );
+    $oauth->authorizationUrl( 42 );
+    $connection = $oauth->handleCallback( 'c1', session( 'google.oauth.state' ) );
+
+    expect( $connection->refresh_token )->toBe( 'r-initial' );
+
+    $oauth->reauthorizationUrl( 42, $connection->grantedScopes() );
+    $connection = $oauth->handleCallback( 'c2', session( 'google.oauth.state' ) );
+
+    expect( $connection->access_token )->toBe( 'a2' );
+    expect( $connection->refresh_token )->toBe( 'r-initial' );
+} );
+
 it( 'sends PKCE code_verifier when exchanging the code', function (): void {
     Http::fake( [
         'oauth2.googleapis.com/*' => Http::response( [

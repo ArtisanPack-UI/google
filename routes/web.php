@@ -10,3 +10,12 @@ Route::get( '/connect', [ GoogleAuthController::class, 'connect' ] )
 
 Route::get( '/callback', [ GoogleAuthController::class, 'callback' ] )
     ->name( 'google.auth.callback' );
+
+Route::get( '/reauthorize', [ GoogleAuthController::class, 'reauthorize' ] )
+    ->name( 'google.auth.reauthorize' );
+
+Route::post( '/disconnect', [ GoogleAuthController::class, 'disconnect' ] )
+    ->name( 'google.auth.disconnect' );
+
+Route::get( '/status', [ GoogleAuthController::class, 'status' ] )
+    ->name( 'google.auth.status' );

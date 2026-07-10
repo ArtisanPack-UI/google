@@ -33,8 +33,10 @@ return [
     |--------------------------------------------------------------------------
     |
     | Which driver backs the ConfigurationRepository. Supported: "config",
-    | "database". OAuth tokens are always stored in the database regardless
-    | of this setting.
+    | "database", "cms". The "cms" driver is only available when
+    | `artisanpack-ui/cms-framework` is installed and stores credentials via
+    | its Settings module. OAuth tokens are always stored in the database
+    | regardless of this setting.
     |
     */
     'driver' => env( 'GOOGLE_CONFIG_DRIVER', 'config' ),
