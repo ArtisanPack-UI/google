@@ -98,6 +98,24 @@ class GoogleConnection extends Model
     }
 
     /**
+     * The scopes granted by Google to this connection, normalized to a list.
+     *
+     * @since 1.0.0
+     *
+     * @return list<string>
+     */
+    public function grantedScopes(): array
+    {
+        $scopes = $this->scopes;
+
+        if ( ! is_array( $scopes ) ) {
+            return [];
+        }
+
+        return array_values( array_map( 'strval', $scopes ) );
+    }
+
+    /**
      * Mark this connection disconnected (e.g. after a refresh failure).
      *
      * @since 1.0.0

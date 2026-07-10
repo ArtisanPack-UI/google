@@ -60,39 +60,33 @@ class OAuthManager
      */
     public function authorizationUrl( int|string $userId, ?array $override = null ): string
     {
-        if ( ! $this->config->isConfigured() ) {
-            throw new OAuthException( __( 'Google OAuth credentials are not configured.' ) );
-        }
+        return $this->buildAuthorizationUrl( $userId, $override ?? $this->scopes->all() );
+    }
 
-        $state     = Str::random( 40 );
-        $verifier  = $this->generateVerifier();
-        $challenge = $this->generateChallenge( $verifier );
+    /**
+     * Build an incremental-consent URL that only requests newly-registered scopes.
+     *
+     * Used when a service package is installed after the account is already
+     * connected — Google's `include_granted_scopes=true` means the resulting
+     * grant is additive, so we only need to send the delta between what the
+     * connection already holds and what the scope registry now requires. If
+     * nothing is missing the caller should short-circuit; this method still
+     * returns a valid URL for the union to keep the API predictable.
+     *
+     * @since 1.0.0
+     *
+     * @param  int|string  $userId  The user reauthorizing.
+     * @param  array<int, string>  $grantedScopes  Scopes the connection currently holds.
+     */
+    public function reauthorizationUrl( int|string $userId, array $grantedScopes ): string
+    {
+        $missing = $this->scopes->missing( $grantedScopes );
 
-        $this->session->put( self::SESSION_STATE, $state );
-        $this->session->put( self::SESSION_VERIFIER, $verifier );
-        $this->session->put( self::SESSION_USER_ID, $userId );
+        // Nothing missing → send the full union so the URL is still meaningful
+        // if the caller decides to force a consent screen anyway.
+        $requested = [] === $missing ? $this->scopes->all() : $missing;
 
-        $scopes = $override ?? $this->scopes->all();
-
-        $params = [
-            'client_id'              => $this->config->getClientId(),
-            'redirect_uri'           => $this->config->getRedirectUri(),
-            'response_type'          => 'code',
-            'scope'                  => implode( ' ', $scopes ),
-            'access_type'            => 'offline',
-            'prompt'                 => 'consent',
-            'include_granted_scopes' => 'true',
-            'state'                  => $state,
-            'code_challenge'         => $challenge,
-            'code_challenge_method'  => 'S256',
-        ];
-
-        $endpoint = (string) $this->laravelConfig->get(
-            'google.endpoints.authorize',
-            'https://accounts.google.com/o/oauth2/v2/auth',
-        );
-
-        return $endpoint . '?' . http_build_query( $params );
+        return $this->buildAuthorizationUrl( $userId, $requested );
     }
 
     /**
@@ -153,20 +147,71 @@ class OAuthManager
 
         [ $googleUserId, $email ] = $this->extractIdentity( $payload[ 'id_token' ] ?? null );
 
-        return GoogleConnection::updateOrCreate(
-            [ 'user_id' => $userId ],
-            [
-                'google_user_id'    => $googleUserId,
-                'email'             => $email,
-                'access_token'      => $payload[ 'access_token' ] ?? null,
-                'refresh_token'     => $payload[ 'refresh_token' ] ?? null,
-                'token_type'        => $payload[ 'token_type' ] ?? 'Bearer',
-                'scopes'            => $scopes,
-                'expires_at'        => $expiresAt,
-                'status'            => GoogleConnection::STATUS_CONNECTED,
-                'disconnect_reason' => null,
-            ],
+        $connection = GoogleConnection::firstOrNew( [ 'user_id' => $userId ] );
+
+        $connection->google_user_id    = $googleUserId ?? $connection->google_user_id;
+        $connection->email             = $email ?? $connection->email;
+        $connection->access_token      = $payload[ 'access_token' ] ?? null;
+        $connection->token_type        = $payload[ 'token_type' ] ?? 'Bearer';
+        $connection->scopes            = $scopes;
+        $connection->expires_at        = $expiresAt;
+        $connection->status            = GoogleConnection::STATUS_CONNECTED;
+        $connection->disconnect_reason = null;
+
+        // Google only returns a refresh_token on the first consent (and on
+        // subsequent consents when prompt=consent is used with a new grant).
+        // Incremental-consent regrants typically omit it — we must preserve
+        // whatever we already have on file rather than nulling it out and
+        // silently disabling refresh for the user.
+        if ( ! empty( $payload[ 'refresh_token' ] ) ) {
+            $connection->refresh_token = $payload[ 'refresh_token' ];
+        }
+
+        $connection->save();
+
+        return $connection;
+    }
+
+    /**
+     * Shared URL builder used by both the initial and incremental consent flows.
+     *
+     * @since 1.0.0
+     *
+     * @param  array<int, string>  $scopes  Scopes to send to Google.
+     */
+    protected function buildAuthorizationUrl( int|string $userId, array $scopes ): string
+    {
+        if ( ! $this->config->isConfigured() ) {
+            throw new OAuthException( __( 'Google OAuth credentials are not configured.' ) );
+        }
+
+        $state     = Str::random( 40 );
+        $verifier  = $this->generateVerifier();
+        $challenge = $this->generateChallenge( $verifier );
+
+        $this->session->put( self::SESSION_STATE, $state );
+        $this->session->put( self::SESSION_VERIFIER, $verifier );
+        $this->session->put( self::SESSION_USER_ID, $userId );
+
+        $params = [
+            'client_id'              => $this->config->getClientId(),
+            'redirect_uri'           => $this->config->getRedirectUri(),
+            'response_type'          => 'code',
+            'scope'                  => implode( ' ', $scopes ),
+            'access_type'            => 'offline',
+            'prompt'                 => 'consent',
+            'include_granted_scopes' => 'true',
+            'state'                  => $state,
+            'code_challenge'         => $challenge,
+            'code_challenge_method'  => 'S256',
+        ];
+
+        $endpoint = (string) $this->laravelConfig->get(
+            'google.endpoints.authorize',
+            'https://accounts.google.com/o/oauth2/v2/auth',
         );
+
+        return $endpoint . '?' . http_build_query( $params );
     }
 
     /**
