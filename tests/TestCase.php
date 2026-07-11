@@ -5,6 +5,8 @@ declare( strict_types=1 );
 namespace Tests;
 
 use ArtisanPackUI\Google\GoogleServiceProvider;
+use ArtisanPackUI\Hooks\Providers\HooksServiceProvider;
+use Livewire\LivewireServiceProvider;
 use Orchestra\Testbench\TestCase as BaseTestCase;
 
 /**
@@ -36,6 +38,8 @@ abstract class TestCase extends BaseTestCase
     protected function getPackageProviders( $app ): array
     {
         return [
+            HooksServiceProvider::class,
+            LivewireServiceProvider::class,
             GoogleServiceProvider::class,
         ];
     }

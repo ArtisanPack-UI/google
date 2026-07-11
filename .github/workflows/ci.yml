@@ -2,15 +2,22 @@ name: CI
 
 on:
   push:
-    branches: [main]
-    tags:
-      - 'v*'
+    branches:
+      - main
+      - 'release/**'
   pull_request:
-    branches: [main]
+    branches:
+      - main
+      - 'release/**'
+
+permissions:
+  contents: read
 
 jobs:
-  build:
+  lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    name: Lint
 
     steps:
       - uses: actions/checkout@v4
@@ -19,7 +26,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite
+          extensions: dom, curl, libxml, mbstring, zip, pdo, sqlite, pdo_sqlite
           coverage: none
 
       - name: Get Composer cache directory
@@ -36,18 +43,44 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
 
-      - name: Upload vendor directory
-        uses: actions/upload-artifact@v4
-        with:
-          name: vendor
-          path: vendor/
-          retention-days: 1
+      - name: Run PHP-CS-Fixer
+        run: ./vendor/bin/php-cs-fixer fix --dry-run --diff
+
+      - name: Run PHPCS
+        continue-on-error: true
+        run: ./vendor/bin/phpcs
 
   test:
-    needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    name: Test (L${{ matrix.laravel }} / PHP ${{ matrix.php }})
 
-    name: Test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Laravel 12 (testbench ^10.2, pest-plugin-laravel ^3.2)
+          - php: '8.2'
+            laravel: '12'
+            testbench: '^10.2'
+            pest-plugin-laravel: '^3.2'
+          - php: '8.3'
+            laravel: '12'
+            testbench: '^10.2'
+            pest-plugin-laravel: '^3.2'
+          - php: '8.4'
+            laravel: '12'
+            testbench: '^10.2'
+            pest-plugin-laravel: '^3.2'
+          # Laravel 13 (testbench ^11.0, pest-plugin-laravel ^4.1) — requires PHP 8.3+
+          - php: '8.3'
+            laravel: '13'
+            testbench: '^11.0'
+            pest-plugin-laravel: '^4.1'
+          - php: '8.4'
+            laravel: '13'
+            testbench: '^11.0'
+            pest-plugin-laravel: '^4.1'
 
     steps:
       - uses: actions/checkout@v4
@@ -55,54 +88,48 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4'
-          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite
+          php-version: ${{ matrix.php }}
+          extensions: dom, curl, libxml, mbstring, zip, pdo, sqlite, pdo_sqlite
           coverage: none
 
-      - name: Download vendor directory
-        uses: actions/download-artifact@v4
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
         with:
-          name: vendor
-          path: vendor/
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-php${{ matrix.php }}-laravel${{ matrix.laravel }}-composer-${{ hashFiles('**/composer.json') }}
+          restore-keys: ${{ runner.os }}-php${{ matrix.php }}-laravel${{ matrix.laravel }}-composer-
 
-      - name: Run tests
-        run: ./vendor/bin/pest --ci
+      - name: Remove lint-only dev dependencies
+        # The code-style toolchain can constrain illuminate/support and would
+        # block newer Laravel legs. Linting runs in its own job.
+        run: >
+          composer remove --dev --no-update --no-interaction
+          friendsofphp/php-cs-fixer
+          artisanpack-ui/code-style
+          artisanpack-ui/code-style-pint
+          dealerdirect/phpcodesniffer-composer-installer
 
-  release:
-    needs: test
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    name: Create Release
-
-    permissions:
-      contents: write
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Extract release notes from CHANGELOG
-        id: changelog
+      - name: Pin Laravel version
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          echo "Extracting notes for version $VERSION"
+          composer require \
+            "laravel/framework:^${{ matrix.laravel }}.0" \
+            "orchestra/testbench:${{ matrix.testbench }}" \
+            "pestphp/pest-plugin-laravel:${{ matrix.pest-plugin-laravel }}" \
+            --no-interaction --no-update --dev
 
-          if [ -f "CHANGELOG.md" ]; then
-            # Extract section for this version
-            NOTES=$(sed -n "/## \[$VERSION\]/,/## \[/p" CHANGELOG.md | sed '1d;$d' | sed '/^$/d')
-            if [ -z "$NOTES" ]; then
-              NOTES="Release $VERSION. See CHANGELOG.md for details."
-            fi
-          else
-            NOTES="Release $VERSION"
-          fi
+      - name: Install dependencies
+        run: composer update --no-interaction --prefer-dist --with-all-dependencies
 
-          # Save to file for multi-line support
-          echo "$NOTES" > release_notes.txt
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          body_path: release_notes.txt
-          generate_release_notes: false
+      - name: Run Unit tests
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          XDEBUG_MODE: off
+        run: vendor/bin/pest tests/Unit --no-coverage
+
+      - name: Run Feature tests
+        env:
+          XDEBUG_MODE: off
+        run: vendor/bin/pest tests/Feature --no-coverage

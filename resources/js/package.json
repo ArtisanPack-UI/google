@@ -1,0 +1,36 @@
+{
+	"name": "@artisanpack-ui/google",
+	"version": "1.0.0",
+	"description": "React and Vue connection-management components for the ArtisanPack UI Google package. Ships as source; consumers compile via their own bundler.",
+	"private": true,
+	"type": "module",
+	"sideEffects": [
+		"*.vue"
+	],
+	"exports": {
+		"./react": {
+			"types": "./react/index.ts",
+			"default": "./react/index.ts"
+		},
+		"./vue": {
+			"types": "./vue/index.ts",
+			"default": "./vue/index.ts"
+		},
+		"./shared/api": {
+			"types": "./shared/api.ts",
+			"default": "./shared/api.ts"
+		}
+	},
+	"peerDependencies": {
+		"react": "^18.0.0 || ^19.0.0",
+		"vue": "^3.4.0"
+	},
+	"peerDependenciesMeta": {
+		"react": {
+			"optional": true
+		},
+		"vue": {
+			"optional": true
+		}
+	}
+}

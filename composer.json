@@ -33,7 +33,13 @@
   "require": {
     "php": "^8.2",
     "illuminate/support": "^10.0|^11.0|^12.0|^13.0",
-    "artisanpack-ui/core": "^1.0"
+    "illuminate/database": "^10.0|^11.0|^12.0|^13.0",
+    "illuminate/http": "^10.0|^11.0|^12.0|^13.0",
+    "illuminate/routing": "^10.0|^11.0|^12.0|^13.0",
+    "illuminate/encryption": "^10.0|^11.0|^12.0|^13.0",
+    "guzzlehttp/guzzle": "^7.5",
+    "artisanpack-ui/core": "^1.0",
+    "artisanpack-ui/hooks": "^1.2"
   },
   "require-dev": {
     "pestphp/pest": "^3.8|^4.0",
@@ -43,7 +49,12 @@
     "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
     "laravel/pint": "^1.26",
     "orchestra/testbench": "^10.2|^11.0",
-    "friendsofphp/php-cs-fixer": "^3.75"
+    "friendsofphp/php-cs-fixer": "^3.75",
+    "livewire/livewire": "^3.6"
+  },
+  "suggest": {
+    "livewire/livewire": "Enables the <livewire:google-connection-manager /> connection UI (^3.6).",
+    "artisanpack-ui/cms-framework": "Enables the 'cms' configuration driver to store OAuth credentials via the Settings module."
   },
   "scripts": {
     "lint": [
