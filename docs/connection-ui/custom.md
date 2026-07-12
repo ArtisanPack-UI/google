@@ -56,7 +56,7 @@ All five expect an authenticated user — unauthenticated calls to `status` retu
 | `connected` | boolean | `true` when the user has a `GoogleConnection` with `status = 'connected'`. |
 | `email` | string \| null | Email from the `id_token` when connected; `null` otherwise. |
 | `grantedScopes` | string[] | Scopes on file for the current connection. Empty array when disconnected. |
-| `requiredScopes` | string[] | Full union from the [[Scopes|scope registry]] — what the connect URL would ask for. |
+| `requiredScopes` | string[] | Full union from the [scope registry](Scopes) — what the connect URL would ask for. |
 | `missingScopes` | string[] | `requiredScopes` − `grantedScopes`. Non-empty when service packages have been added since the initial consent. |
 | `needsReauthorize` | boolean | `true` when `connected && missingScopes.length > 0`. Use to gate the "Reauthorize" button. |
 | `disconnectReason` | string \| null | When disconnected, why. Values include `Disconnected by user.`, `Missing refresh token.`, `Refresh token revoked or expired.` |

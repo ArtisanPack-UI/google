@@ -8,14 +8,14 @@ The public surface of `artisanpack-ui/google`.
 
 Sub-pages by class:
 
-- [[API Reference/Google|`Google` — the facade / helper root]]
-- [[API Reference/OAuth Manager|`OAuthManager`]]
-- [[API Reference/Token Manager|`TokenManager`]]
-- [[API Reference/Scope Registry|`ScopeRegistry`]]
-- [[API Reference/Configuration Repository|`ConfigurationRepository`]] (contract + three drivers)
-- [[API Reference/Connection Model|`GoogleConnection`]]
-- [[API Reference/Connection State|`ConnectionState`]]
-- [[API Reference/Exceptions|Exceptions]]
+- [`Google` — the facade / helper root](API-Reference-Google)
+- [`OAuthManager`](API-Reference-Oauth-Manager)
+- [`TokenManager`](API-Reference-Token-Manager)
+- [`ScopeRegistry`](API-Reference-Scope-Registry)
+- [`ConfigurationRepository`](API-Reference-Configuration-Repository) (contract + three drivers)
+- [`GoogleConnection`](API-Reference-Connection-Model)
+- [`ConnectionState`](API-Reference-Connection-State)
+- [Exceptions](API-Reference-Exceptions)
 
 ## The facade
 
@@ -91,7 +91,7 @@ ArtisanPackUI\Google\
 
 ## Public routes
 
-Reference: [[OAuth Flow#Routes]]
+Reference: [OAuth Flow#Routes](Oauth#routes)
 
 ## Public views
 
@@ -110,7 +110,7 @@ Reference: [[OAuth Flow#Routes]]
 
 | Hook | Contract | Purpose |
 |---|---|---|
-| `ap.google.scopes` | Filter — receives and returns `array<int, string>` | Contribute scopes to the [[Scopes|registry]]. Fires inside `ScopeRegistry::all()`. |
+| `ap.google.scopes` | Filter — receives and returns `array<int, string>` | Contribute scopes to the [registry](Scopes). Fires inside `ScopeRegistry::all()`. |
 
 ## Event listeners (Livewire)
 
@@ -119,4 +119,4 @@ Reference: [[OAuth Flow#Routes]]
 | `google-connection-updated` | Triggers `$refresh` on `<livewire:google-connection-manager />`. Dispatch from your own code after a same-page state change. |
 
 ---
-Continue to [[Testing]] →
+Continue to [Testing](Testing) →

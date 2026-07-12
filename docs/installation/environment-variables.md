@@ -66,4 +66,4 @@ These keys have no env fallback and must be set in `config/google.php` if you wa
 - `google.routes.redirect_after_connect`
 - `google.routes.redirect_after_error`
 
-See [[Installation/Configuration|Configuration]] for the full reference.
+See [Configuration](Installation-Configuration) for the full reference.

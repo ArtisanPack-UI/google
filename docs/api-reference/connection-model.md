@@ -4,7 +4,7 @@ title: GoogleConnection
 
 # `GoogleConnection`
 
-`ArtisanPackUI\Google\Models\GoogleConnection` is the Eloquent model that represents a single connected Google account for a user. See [[Connection Model]] for the full schema breakdown; this page is the API reference.
+`ArtisanPackUI\Google\Models\GoogleConnection` is the Eloquent model that represents a single connected Google account for a user. See [Connection Model](Connection-Model) for the full schema breakdown; this page is the API reference.
 
 ## Signature
 
@@ -95,5 +95,5 @@ Flip `status` to `disconnected`, set `disconnect_reason`, save. Called automatic
 
 ## Related
 
-- [[Connection Model]] — schema breakdown, relationship setup, testing.
-- [[API Reference/Connection State|`ConnectionState`]] — the view model that wraps this for UIs.
+- [Connection Model](Connection-Model) — schema breakdown, relationship setup, testing.
+- [`ConnectionState`](API-Reference-Connection-State) — the view model that wraps this for UIs.

@@ -23,7 +23,7 @@ Instantiated once by the service provider; you don't build these directly.
 
 ### `config(): ConfigurationRepository`
 
-The active credential driver. See [[API Reference/Configuration Repository]].
+The active credential driver. See [API Reference/Configuration Repository](API-Reference-Configuration-Repository).
 
 ```php
 Google::config()->getClientId();
@@ -32,7 +32,7 @@ Google::config()->save( [ ... ] );
 
 ### `scopes(): ScopeRegistry`
 
-The [[Scopes|scope registry]].
+The [scope registry](Scopes).
 
 ```php
 Google::scopes()->register( 'https://www.googleapis.com/auth/analytics.readonly' );
@@ -41,7 +41,7 @@ Google::scopes()->all();
 
 ### `tokens(): TokenManager`
 
-The [[Tokens|token manager]].
+The [token manager](Tokens).
 
 ```php
 $token = Google::tokens()->getValidAccessToken( $connection );
@@ -49,7 +49,7 @@ $token = Google::tokens()->getValidAccessToken( $connection );
 
 ### `oauth(): OAuthManager`
 
-The [[API Reference/OAuth Manager|OAuth manager]].
+The [OAuth manager](API-Reference-Oauth-Manager).
 
 ```php
 $url = Google::oauth()->authorizationUrl( $userId );

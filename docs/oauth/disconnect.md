@@ -36,7 +36,7 @@ The `POST` method matters — GET links can be prefetched by browsers. Every UI 
 </form>
 ```
 
-The React and Vue components handle this via `fetch(url, { method: 'POST', headers: { 'X-CSRF-TOKEN': token } })` — see [[Connection UI]].
+The React and Vue components handle this via `fetch(url, { method: 'POST', headers: { 'X-CSRF-TOKEN': token } })` — see [Connection UI](Connection-UI).
 
 ## What `markDisconnected()` does
 
@@ -88,7 +88,7 @@ The revoke endpoint accepts either an access token or a refresh token. Revoking 
 1. **Missing refresh token** — `TokenManager::refresh()` sees no refresh token on file, marks the connection disconnected with reason `"Missing refresh token."`, and throws.
 2. **`invalid_grant` from the refresh endpoint** — the user revoked access on Google's side, or the refresh token expired. `TokenManager::refresh()` marks the connection disconnected with reason `"Refresh token revoked or expired."` and throws.
 
-See [[Tokens#failure-modes|Tokens → Failure modes]] for the full sequence.
+See [Tokens → Failure modes](Tokens#failure-modes) for the full sequence.
 
 ## Reconnecting
 

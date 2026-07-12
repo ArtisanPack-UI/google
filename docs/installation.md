@@ -26,10 +26,10 @@ php artisan migrate
 
 This creates two tables:
 
-- `google_configurations` — used by the [[Credential Drivers#database|database driver]] to store OAuth client credentials. Unused by the `config` and `cms` drivers.
+- `google_configurations` — used by the [database driver](Drivers#database) to store OAuth client credentials. Unused by the `config` and `cms` drivers.
 - `google_connections` — the per-user connection row (encrypted access + refresh tokens, granted scopes, expiry, status).
 
-See [[Connection Model]] for a full column reference.
+See [Connection Model](Connection-Model) for a full column reference.
 
 ## Publish the config (optional)
 
@@ -37,7 +37,7 @@ See [[Connection Model]] for a full column reference.
 php artisan vendor:publish --tag=google-config
 ```
 
-Publishes `config/google.php`. Override routes, drivers, endpoints, or the user model here. Full reference: [[Installation/Configuration|Configuration]].
+Publishes `config/google.php`. Override routes, drivers, endpoints, or the user model here. Full reference: [Configuration](Installation-Configuration).
 
 ## Publish the views (optional)
 
@@ -45,7 +45,7 @@ Publishes `config/google.php`. Override routes, drivers, endpoints, or the user 
 php artisan vendor:publish --tag=google-views
 ```
 
-Copies the Livewire component's Blade views to `resources/views/vendor/google/`. Only needed if you want to customize the connect / disconnect / status markup. See [[Connection UI]].
+Copies the Livewire component's Blade views to `resources/views/vendor/google/`. Only needed if you want to customize the connect / disconnect / status markup. See [Connection UI](Connection-UI).
 
 ## Publish the JS components (optional)
 
@@ -53,7 +53,7 @@ Copies the Livewire component's Blade views to `resources/views/vendor/google/`.
 php artisan vendor:publish --tag=google-js
 ```
 
-Copies the React and Vue `ConnectionManager` sources to `resources/js/vendor/google/`. Skip this step if you'd rather point your bundler at the package's `resources/js/` directly. See [[Connection UI]].
+Copies the React and Vue `ConnectionManager` sources to `resources/js/vendor/google/`. Skip this step if you'd rather point your bundler at the package's `resources/js/` directly. See [Connection UI](Connection-UI).
 
 ## Google Cloud Console setup
 
@@ -67,7 +67,7 @@ Before a user can connect, you need an OAuth 2.0 client from Google:
    - Application type: **Web application**
    - Authorized redirect URI: `https://your-app.test/google/auth/callback` (adjust prefix if you change `google.routes.prefix`).
 6. Copy the generated **Client ID** and **Client secret**.
-7. Save them via whichever [[Credential Drivers|credential driver]] you've chosen.
+7. Save them via whichever [credential driver](Drivers) you've chosen.
 
 ## Store your credentials
 
@@ -80,7 +80,7 @@ GOOGLE_CLIENT_SECRET=your-client-secret
 GOOGLE_REDIRECT_URI=https://your-app.test/google/auth/callback
 ```
 
-Or switch to a writable driver — see [[Credential Drivers]].
+Or switch to a writable driver — see [Credential Drivers](Drivers).
 
 ## Apply route middleware (optional)
 
@@ -94,7 +94,7 @@ The package registers four web routes under `google.routes.prefix` (default `/go
 ],
 ```
 
-Route reference: [[OAuth Flow#Routes|OAuth Flow]].
+Route reference: [OAuth Flow](Oauth#routes).
 
 ## Verify the install
 
@@ -116,10 +116,10 @@ POST  google/auth/disconnect   google.auth.disconnect
 
 ## Deeper topics
 
-- [[Installation/Requirements|Requirements]] — PHP, Laravel, and peer-package versions in full detail.
-- [[Installation/Configuration|Configuration]] — full `config/google.php` reference.
-- [[Installation/Environment Variables|Environment variables]] — every env var the package reads.
-- [[Installation/Google Cloud Setup|Google Cloud setup]] — the Cloud Console walkthrough, with screenshots-worth-of-notes on scope publishing, verification, and test users.
+- [Requirements](Installation-Requirements) — PHP, Laravel, and peer-package versions in full detail.
+- [Configuration](Installation-Configuration) — full `config/google.php` reference.
+- [Environment variables](Installation-Environment-Variables) — every env var the package reads.
+- [Google Cloud setup](Installation-Google-Cloud-Setup) — the Cloud Console walkthrough, with screenshots-worth-of-notes on scope publishing, verification, and test users.
 
 ---
-Continue to [[Credential Drivers]] →
+Continue to [Credential Drivers](Drivers) →

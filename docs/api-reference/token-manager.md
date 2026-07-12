@@ -4,7 +4,7 @@ title: TokenManager
 
 # `TokenManager`
 
-`ArtisanPackUI\Google\Tokens\TokenManager` returns valid access tokens, refreshing transparently when the current one is close to expiring. Fully covered in [[Tokens]]; this page is the API reference.
+`ArtisanPackUI\Google\Tokens\TokenManager` returns valid access tokens, refreshing transparently when the current one is close to expiring. Fully covered in [Tokens](Tokens); this page is the API reference.
 
 ## Signature
 
@@ -56,9 +56,9 @@ The `isExpired()` check on the connection treats tokens as expired **60 seconds 
 
 ## HTTP client
 
-The manager resolves `Illuminate\Http\Client\Factory` from the container. `Http::fake()` in tests transparently intercepts calls — see [[Tokens#testing|Tokens → Testing]].
+The manager resolves `Illuminate\Http\Client\Factory` from the container. `Http::fake()` in tests transparently intercepts calls — see [Tokens → Testing](Tokens#testing).
 
 ## Related
 
-- [[Tokens]] — usage, failure modes, retry patterns.
-- [[API Reference/Exceptions|`TokenRefreshException`]].
+- [Tokens](Tokens) — usage, failure modes, retry patterns.
+- [`TokenRefreshException`](API-Reference-Exceptions).

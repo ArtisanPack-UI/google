@@ -87,7 +87,7 @@ You can do this in a one-off migration or an Artisan command.
 ## When not to use it
 
 - Simple single-tenant apps — the `config` driver is one less moving part.
-- Apps where the CMS Settings module is already the source of truth for site-level config — use the [[Drivers/CMS|`cms` driver]] instead.
+- Apps where the CMS Settings module is already the source of truth for site-level config — use the [`cms` driver](Drivers-CMS) instead.
 
 ## Multi-tenant use
 

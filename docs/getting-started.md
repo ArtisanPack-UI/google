@@ -6,7 +6,7 @@ title: Getting Started
 
 Welcome to ArtisanPack UI Google. This guide walks through the shortest path from `composer require` to a user with a working Google connection.
 
-See also: [[Installation]], [[Credential Drivers]], [[OAuth Flow]], and [[Connection UI]].
+See also: [Installation](Installation), [Credential Drivers](Drivers), [OAuth Flow](Oauth), and [Connection UI](Connection-UI).
 
 ## Requirements
 
@@ -19,7 +19,7 @@ Optional peer packages:
 | Package | What it enables |
 |---|---|
 | [`livewire/livewire`](https://livewire.laravel.com/) `^3.6` | The `<livewire:google-connection-manager />` connect/disconnect/status UI. |
-| [`artisanpack-ui/cms-framework`](https://github.com/ArtisanPack-UI/cms-framework) | The [[Credential Drivers#cms|cms credential driver]] — stores credentials via the CMS Settings module. |
+| [`artisanpack-ui/cms-framework`](https://github.com/ArtisanPack-UI/cms-framework) | The [cms credential driver](Drivers#cms) — stores credentials via the CMS Settings module. |
 
 Neither is required; the base package boots and works without them.
 
@@ -38,11 +38,11 @@ php artisan vendor:publish --tag=google-migrations
 php artisan migrate
 ```
 
-This creates the `google_configurations` and `google_connections` tables. See [[Connection Model]] for the schema.
+This creates the `google_configurations` and `google_connections` tables. See [Connection Model](Connection-Model) for the schema.
 
 ## 3. Register your Google OAuth client
 
-Follow the [[Installation#Google Cloud Console setup|Google Cloud Console]] walkthrough to create an OAuth 2.0 client ID and register a redirect URI. Copy the client ID and secret.
+Follow the [Google Cloud Console](Installation#google-cloud-console-setup) walkthrough to create an OAuth 2.0 client ID and register a redirect URI. Copy the client ID and secret.
 
 ## 4. Store your credentials
 
@@ -54,7 +54,7 @@ GOOGLE_CLIENT_SECRET=your-client-secret
 GOOGLE_REDIRECT_URI=https://your-app.test/google/auth/callback
 ```
 
-For multi-tenant apps or credentials managed through an admin UI, switch to the `database` or `cms` driver — see [[Credential Drivers]].
+For multi-tenant apps or credentials managed through an admin UI, switch to the `database` or `cms` driver — see [Credential Drivers](Drivers).
 
 ## 5. Connect a user
 
@@ -66,7 +66,7 @@ Send an authenticated user to the `google.auth.connect` route:
 
 They'll be redirected to Google's consent screen, then bounced back to `/google/auth/callback`. On success, a `GoogleConnection` row is written for the authenticated user and they're redirected to `google.routes.redirect_after_connect` (default `/`).
 
-Full walkthrough: [[OAuth Flow]].
+Full walkthrough: [OAuth Flow](Oauth).
 
 ## 6. Make an authenticated API call
 
@@ -83,7 +83,7 @@ Http::withToken( $token )
     ->get( 'https://analyticsdata.googleapis.com/v1beta/...' );
 ```
 
-More on refresh behavior: [[Tokens]].
+More on refresh behavior: [Tokens](Tokens).
 
 ## 7. Add a connection-management UI
 
@@ -93,17 +93,17 @@ If Livewire is installed, drop the component in a Blade view:
 <livewire:google-connection-manager />
 ```
 
-React and Vue equivalents ship as source under `resources/js/`. See [[Connection UI]] for props, events, and how to build your own.
+React and Vue equivalents ship as source under `resources/js/`. See [Connection UI](Connection-UI) for props, events, and how to build your own.
 
 ## Next steps
 
-- [[Installation]] — full install walkthrough, Google Cloud setup, publishing assets.
-- [[Credential Drivers]] — config vs. database vs. CMS.
-- [[OAuth Flow]] — connect, callback, reauthorize, and disconnect internals.
-- [[Scopes]] — how service packages register scopes and how incremental consent works.
-- [[Tokens]] — refresh cadence, failure modes, revocation.
-- [[Connection UI]] — Livewire, React, Vue components, and the status endpoint.
-- [[API Reference]] — the full public surface: `Google` facade, `google()` helper, contracts, and models.
+- [Installation](Installation) — full install walkthrough, Google Cloud setup, publishing assets.
+- [Credential Drivers](Drivers) — config vs. database vs. CMS.
+- [OAuth Flow](Oauth) — connect, callback, reauthorize, and disconnect internals.
+- [Scopes](Scopes) — how service packages register scopes and how incremental consent works.
+- [Tokens](Tokens) — refresh cadence, failure modes, revocation.
+- [Connection UI](Connection-UI) — Livewire, React, Vue components, and the status endpoint.
+- [API Reference](API-Reference) — the full public surface: `Google` facade, `google()` helper, contracts, and models.
 
 ---
-Continue to [[Installation]] →
+Continue to [Installation](Installation) →

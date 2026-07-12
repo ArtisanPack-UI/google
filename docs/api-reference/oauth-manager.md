@@ -4,7 +4,7 @@ title: OAuthManager
 
 # `OAuthManager`
 
-`ArtisanPackUI\Google\OAuth\OAuthManager` drives the authorization-code flow with PKCE. Fully covered in [[OAuth Flow]]; this page is the API reference.
+`ArtisanPackUI\Google\OAuth\OAuthManager` drives the authorization-code flow with PKCE. Fully covered in [OAuth Flow](Oauth); this page is the API reference.
 
 ## Signature
 
@@ -78,7 +78,7 @@ All three are `pull()`ed on callback, so replays fail cleanly.
 
 ## Related
 
-- [[OAuth Flow]] — end-to-end walkthrough.
-- [[OAuth/Connect]] — parameter-by-parameter breakdown of the authorize URL.
-- [[OAuth/Callback]] — code exchange and id_token handling.
-- [[OAuth/Reauthorize]] — incremental consent details.
+- [OAuth Flow](Oauth) — end-to-end walkthrough.
+- [OAuth/Connect](Oauth-Connect) — parameter-by-parameter breakdown of the authorize URL.
+- [OAuth/Callback](Oauth-Callback) — code exchange and id_token handling.
+- [OAuth/Reauthorize](Oauth-Reauthorize) — incremental consent details.

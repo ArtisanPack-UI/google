@@ -47,10 +47,10 @@ $params = [
 ### Parameters explained
 
 - **`response_type=code`** — Authorization Code grant. We exchange the code for tokens server-side.
-- **`scope`** — Space-separated list from `ScopeRegistry::all()`. Baseline is `openid userinfo.email userinfo.profile`; service packages add via `ap.google.scopes`. See [[Scopes]].
+- **`scope`** — Space-separated list from `ScopeRegistry::all()`. Baseline is `openid userinfo.email userinfo.profile`; service packages add via `ap.google.scopes`. See [Scopes](Scopes).
 - **`access_type=offline`** — Required to receive a `refresh_token`. Without this Google issues an access-token-only response and you'd have no way to refresh.
 - **`prompt=consent`** — Forces the consent screen every time. This guarantees the `refresh_token` is included in the response — Google only re-issues it when the user actually clicks "Allow", not when they silently re-consent to previously approved scopes. Without `prompt=consent`, repeat connects from the same account get access tokens with no refresh token attached.
-- **`include_granted_scopes=true`** — Google merges any newly granted scopes with existing ones. This matters for [[OAuth/Reauthorize|incremental consent]] and is harmless on a first connect.
+- **`include_granted_scopes=true`** — Google merges any newly granted scopes with existing ones. This matters for [incremental consent](Oauth-Reauthorize) and is harmless on a first connect.
 - **`state`** — 40-char random string, stored in the session. On callback, compared with `hash_equals()` against the returned value. Defeats CSRF.
 - **`code_challenge` + `code_challenge_method=S256`** — PKCE. The verifier (a URL-safe base64 of 64 random bytes) is stored in the session; the challenge is the URL-safe base64 of `SHA-256(verifier)`. Google returns the code to the redirect URI and requires the verifier on the token exchange call — so an attacker who intercepts the redirect can't exchange the code without also having the verifier.
 

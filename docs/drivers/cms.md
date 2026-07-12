@@ -93,7 +93,7 @@ apUpdateSetting( 'artisanpack_google_redirect_uri', '...' );
 
 ## `APP_KEY` rotation
 
-Same story as the [[Drivers/Database|`database` driver]]: rotating `APP_KEY` without re-encrypting the stored setting invalidates the client secret. The driver logs a warning and treats the row as unconfigured:
+Same story as the [`database` driver](Drivers-Database): rotating `APP_KEY` without re-encrypting the stored setting invalidates the client secret. The driver logs a warning and treats the row as unconfigured:
 
 ```
 artisanpack-ui/google: failed to decrypt CMS-stored client_secret; treating as unconfigured.

@@ -35,7 +35,7 @@ The config driver is read-only. Switch to the database driver to persist credent
 
 This is deliberate — the config driver's whole point is that credentials live in your deploy pipeline. Writing back to the file wouldn't be persisted across container restarts, and mutating environment values at runtime tends to leak between requests.
 
-Need to update credentials programmatically? Switch to the [[Drivers/Database|`database`]] or [[Drivers/CMS|`cms`]] driver.
+Need to update credentials programmatically? Switch to the [`database`](Drivers-Database) or [`cms`](Drivers-CMS) driver.
 
 ## When to use it
 

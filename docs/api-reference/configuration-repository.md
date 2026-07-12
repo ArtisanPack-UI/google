@@ -4,7 +4,7 @@ title: ConfigurationRepository
 
 # `ConfigurationRepository`
 
-`ArtisanPackUI\Google\Contracts\ConfigurationRepository` is the contract every credential driver implements. See [[Credential Drivers]] for driver behavior and selection.
+`ArtisanPackUI\Google\Contracts\ConfigurationRepository` is the contract every credential driver implements. See [Credential Drivers](Drivers) for driver behavior and selection.
 
 ## The contract
 
@@ -49,9 +49,9 @@ Whether the repository has a full, usable credential set. All three of `getClien
 
 | Class | Selected by | Writable? | Details |
 |---|---|---|---|
-| `ArtisanPackUI\Google\Configuration\ConfigDriver` | `driver = 'config'` (default) | ❌ | Reads from Laravel config / .env. See [[Drivers/Config]]. |
-| `ArtisanPackUI\Google\Configuration\DatabaseDriver` | `driver = 'database'` | ✅ | Stores in `google_configurations`. Client secret encrypted. See [[Drivers/Database]]. |
-| `ArtisanPackUI\Google\Configuration\CmsSettingsDriver` | `driver = 'cms'` | ✅ | Delegates to CMS Settings module. Client secret encrypted. See [[Drivers/CMS]]. |
+| `ArtisanPackUI\Google\Configuration\ConfigDriver` | `driver = 'config'` (default) | ❌ | Reads from Laravel config / .env. See [Drivers/Config](Drivers-Config). |
+| `ArtisanPackUI\Google\Configuration\DatabaseDriver` | `driver = 'database'` | ✅ | Stores in `google_configurations`. Client secret encrypted. See [Drivers/Database](Drivers-Database). |
+| `ArtisanPackUI\Google\Configuration\CmsSettingsDriver` | `driver = 'cms'` | ✅ | Delegates to CMS Settings module. Client secret encrypted. See [Drivers/CMS](Drivers-CMS). |
 
 Selecting between them:
 

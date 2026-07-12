@@ -4,7 +4,7 @@ title: React Component
 
 # React Component
 
-`GoogleConnectionManager` is a React component that consumes the JSON status endpoint and renders the same connect / disconnect / reauthorize UI as the [[Connection UI/Livewire|Livewire]] and [[Connection UI/Vue|Vue]] surfaces.
+`GoogleConnectionManager` is a React component that consumes the JSON status endpoint and renders the same connect / disconnect / reauthorize UI as the [Livewire](Connection-UI-Livewire) and [Vue](Connection-UI-Vue) surfaces.
 
 ## Getting the source
 

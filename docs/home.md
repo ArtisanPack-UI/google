@@ -8,32 +8,31 @@ Welcome to the documentation for **ArtisanPack UI Google** — the shared Google
 
 Service packages like [`artisanpack-ui/analytics-google`](https://github.com/ArtisanPack-UI/analytics-google), [`artisanpack-ui/google-search-console`](https://github.com/ArtisanPack-UI/google-search-console), and [`artisanpack-ui/google-tag-manager`](https://github.com/ArtisanPack-UI/google-tag-manager) sit on top of this package — they contribute the scopes they need, then call the shared token manager to make authenticated API calls. They never handle OAuth themselves.
 
-Use the navigation below to explore topics. Links use the GitLab wiki page style, so you can jump between pages like [[Getting Started]] or [[OAuth Flow]].
+Use the navigation below to explore topics. Links use the GitLab wiki page style, so you can jump between pages like [Getting Started](Getting-Started) or [OAuth Flow](Oauth).
 
-- [[Getting Started]]
-- [[Installation]]
-- [[Credential Drivers]]
-- [[OAuth Flow]]
-- [[Scopes]]
-- [[Tokens]]
-- [[Connection Model]]
-- [[Connection UI]]
-- [[API Reference]]
-- [[Testing]]
-- [[FAQ]]
-- [[Changelog]]
-- [[Contributing]]
+- [Getting Started](Getting-Started)
+- [Installation](Installation)
+- [Credential Drivers](Drivers)
+- [OAuth Flow](Oauth)
+- [Scopes](Scopes)
+- [Tokens](Tokens)
+- [Connection Model](Connection-Model)
+- [Connection UI](Connection-UI)
+- [API Reference](API-Reference)
+- [Testing](Testing)
+- [FAQ](FAQ)
+- [Contributing](Contributing)
 
-If you're new here, start with [[Getting Started]].
+If you're new here, start with [Getting Started](Getting-Started).
 
 ## What this package does
 
 `artisanpack-ui/google` owns the shared plumbing that every ArtisanPack UI Google integration sits on top of. It provides:
 
 - **OAuth2 authorization-code + PKCE flow** — builds the consent URL, exchanges the callback code, extracts the user's Google identity from the returned `id_token`.
-- **Encrypted token storage** on a per-user `google_connections` model, with transparent refresh via the [[Tokens|token manager]].
+- **Encrypted token storage** on a per-user `google_connections` model, with transparent refresh via the [token manager](Tokens).
 - A **scope registry** that lets any installed service package contribute the scopes it needs. Consent covers the union so users only see one screen.
-- **Credential storage drivers** ([[Credential Drivers|config, database, or CMS]]) so credentials can live wherever a project already stores its secrets.
+- **Credential storage drivers** ([config, database, or CMS](Drivers)) so credentials can live wherever a project already stores its secrets.
 - **Connection-management UI** for Livewire, React, and Vue — all backed by the same routes and JSON status endpoint.
 
 ## What this package does not do

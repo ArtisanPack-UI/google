@@ -10,9 +10,9 @@ Three drivers ship in the box; pick the one that matches how your project stores
 
 | Driver | Storage | Writable? | Best for |
 |---|---|---|---|
-| [[Drivers/Config|`config`]] (default) | `config/google.php` / `.env` | No | Single-tenant apps where credentials belong in the deploy pipeline. |
-| [[Drivers/Database|`database`]] | `google_configurations` table (client_secret encrypted) | Yes | Multi-tenant apps, admin-UI-managed credentials, credential rotation without a deploy. |
-| [[Drivers/CMS|`cms`]] | CMS framework Settings module (client_secret encrypted) | Yes | Projects already using `artisanpack-ui/cms-framework` — credentials live alongside every other site-level setting. |
+| [`config`](Drivers-Config) (default) | `config/google.php` / `.env` | No | Single-tenant apps where credentials belong in the deploy pipeline. |
+| [`database`](Drivers-Database) | `google_configurations` table (client_secret encrypted) | Yes | Multi-tenant apps, admin-UI-managed credentials, credential rotation without a deploy. |
+| [`cms`](Drivers-CMS) | CMS framework Settings module (client_secret encrypted) | Yes | Projects already using `artisanpack-ui/cms-framework` — credentials live alongside every other site-level setting. |
 
 ## Selecting a driver
 
@@ -90,9 +90,9 @@ Because `GoogleServiceProvider::register()` uses `$this->app->bind()` (not `sing
 
 ## Deeper topics
 
-- [[Drivers/Config|`config` driver]] — env / config-file reader.
-- [[Drivers/Database|`database` driver]] — encrypted `google_configurations` row.
-- [[Drivers/CMS|`cms` driver]] — Settings-module integration and sanitize-time encryption.
+- [`config` driver](Drivers-Config) — env / config-file reader.
+- [`database` driver](Drivers-Database) — encrypted `google_configurations` row.
+- [`cms` driver](Drivers-CMS) — Settings-module integration and sanitize-time encryption.
 
 ---
-Continue to [[OAuth Flow]] →
+Continue to [OAuth Flow](Oauth) →

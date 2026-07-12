@@ -149,7 +149,7 @@ Key details:
 - **Refresh token preservation** — the setter is gated behind `! empty( $payload[ 'refresh_token' ] )`. Google only returns a refresh token on the first consent (and on subsequent consents when `prompt=consent` is used with a new grant). Incremental-consent regrants typically omit it. If we nulled it out on every callback we'd silently disable refresh for the user; instead we keep whatever we already have on file.
 - **Access + refresh token encryption** — handled by the model's `casts()` returning `'encrypted'`. The DB sees ciphertext.
 - **Scopes** — Google returns the effective scope list in the `scope` field of the response (space-separated). We split on `' '` and store as a JSON array; if the field is missing, we fall back to the union the scope registry returned.
-- **`expires_at`** — computed as `now() + expires_in` seconds. If Google doesn't include `expires_in` (extremely rare), we store `null`, which the [[Tokens|token manager]] treats as "expired" and triggers a refresh on next use.
+- **`expires_at`** — computed as `now() + expires_in` seconds. If Google doesn't include `expires_in` (extremely rare), we store `null`, which the [token manager](Tokens) treats as "expired" and triggers a refresh on next use.
 - **`disconnect_reason = null`** — a re-connect clears the "why was this disconnected?" note from any prior disconnect.
 
 ## Debugging a failing callback
