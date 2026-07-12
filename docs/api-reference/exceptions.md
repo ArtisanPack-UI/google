@@ -8,7 +8,7 @@ Two exception types live in `ArtisanPackUI\Google\Exceptions`. Both extend `\Exc
 
 ## `OAuthException`
 
-`ArtisanPackUI\Google\Exceptions\OAuthException` — thrown during the [[OAuth Flow|authorization-code flow]].
+`ArtisanPackUI\Google\Exceptions\OAuthException` — thrown during the [authorization-code flow](Oauth).
 
 ### Thrown by
 
@@ -39,7 +39,7 @@ try {
 
 ## `TokenRefreshException`
 
-`ArtisanPackUI\Google\Exceptions\TokenRefreshException` — thrown by the [[Tokens|token manager]].
+`ArtisanPackUI\Google\Exceptions\TokenRefreshException` — thrown by the [token manager](Tokens).
 
 ### Thrown by
 
@@ -73,7 +73,7 @@ try {
 }
 ```
 
-Full failure-mode reference: [[Tokens#failure-modes]].
+Full failure-mode reference: [Tokens#failure-modes](Tokens#failure-modes).
 
 ## Custom-driver exceptions
 

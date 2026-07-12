@@ -231,7 +231,7 @@ $response->assertOk()->assertJson( [
 
 ## Testing the JS components
 
-See [[Connection UI/React#Testing]] and [[Connection UI/Vue#Testing]].
+See [Connection UI/React#Testing](Connection-UI-React#testing) and [Connection UI/Vue#Testing](Connection-UI-Vue#testing).
 
 ## Running the package's own tests
 

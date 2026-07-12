@@ -4,7 +4,7 @@ title: ScopeRegistry
 
 # `ScopeRegistry`
 
-`ArtisanPackUI\Google\Scopes\ScopeRegistry` collects the union of OAuth scopes required by dependent packages. Fully covered in [[Scopes]]; this page is the API reference.
+`ArtisanPackUI\Google\Scopes\ScopeRegistry` collects the union of OAuth scopes required by dependent packages. Fully covered in [Scopes](Scopes); this page is the API reference.
 
 ## Signature
 
@@ -89,5 +89,5 @@ Requires `artisanpack-ui/hooks ^1.2`.
 
 ## Related
 
-- [[Scopes]] — usage and conventions.
-- [[OAuth/Reauthorize]] — how `missing()` drives incremental consent.
+- [Scopes](Scopes) — usage and conventions.
+- [OAuth/Reauthorize](Oauth-Reauthorize) — how `missing()` drives incremental consent.

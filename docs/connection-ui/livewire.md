@@ -110,7 +110,7 @@ class ConnectionManager extends Component
 }
 ```
 
-Deliberately minimal — every rule about what to show lives in [[Connection Model|`ConnectionState`]] so the Livewire, React, and Vue surfaces can't drift.
+Deliberately minimal — every rule about what to show lives in [`ConnectionState`](Connection-Model) so the Livewire, React, and Vue surfaces can't drift.
 
 ## Testing
 

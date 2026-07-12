@@ -36,7 +36,7 @@ Schema::create( 'google_connections', function ( Blueprint $table ): void {
 | `user_id` | bigint | — | FK to your `users` table (or the model in `google.user_model`). Unique. |
 | `google_user_id` | string | — | Stable Google account id (`sub` claim from the `id_token`). Useful for detecting "user reconnected with a different Google account". |
 | `email` | string | — | Email address from the `id_token`'s `email` claim. Displayed in the connection UI as "Connected as {email}". |
-| `access_token` | text | `encrypted` cast | Bearer token used for API calls. Refreshed transparently by the [[Tokens|token manager]]. |
+| `access_token` | text | `encrypted` cast | Bearer token used for API calls. Refreshed transparently by the [token manager](Tokens). |
 | `refresh_token` | text | `encrypted` cast | Long-lived token used to mint new access tokens. Preserved across incremental-consent regrants. |
 | `token_type` | string | — | Always `Bearer` in practice. |
 | `scopes` | text | `array` cast | JSON list of scopes Google returned in the exchange response. Used by the scope registry to compute `missing()`. |

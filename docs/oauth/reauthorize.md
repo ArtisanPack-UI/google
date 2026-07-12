@@ -4,7 +4,7 @@ title: Reauthorize
 
 # Reauthorize
 
-When a new service package is installed after the user is already connected, the [[Scopes|scope registry]] starts returning scopes the connection doesn't hold. Rather than force a full re-consent, the package supports **incremental consent** — Google's `include_granted_scopes=true` lets us ask for only the missing scopes and have the new grant merge with the existing one.
+When a new service package is installed after the user is already connected, the [scope registry](Scopes) starts returning scopes the connection doesn't hold. Rather than force a full re-consent, the package supports **incremental consent** — Google's `include_granted_scopes=true` lets us ask for only the missing scopes and have the new grant merge with the existing one.
 
 ## The route
 
@@ -51,11 +51,11 @@ public function reauthorizationUrl( int|string $userId, array $grantedScopes ): 
 Two behaviors worth noting:
 
 1. **Only the delta is requested** when there are missing scopes. Google merges the new grant with the existing one because we always send `include_granted_scopes=true`, so the user's `grantedScopes` grows without them re-approving old ones.
-2. **Fallback to the full union** when nothing is missing. In practice callers should short-circuit before hitting this method (see [[Connection UI]] — the reauthorize banner only shows when `needsReauthorize === true`), but the fallback keeps the API predictable: it always returns a valid authorize URL.
+2. **Fallback to the full union** when nothing is missing. In practice callers should short-circuit before hitting this method (see [Connection UI](Connection-UI) — the reauthorize banner only shows when `needsReauthorize === true`), but the fallback keeps the API predictable: it always returns a valid authorize URL.
 
 ## Detecting the need
 
-The [[Connection Model|`ConnectionState`]] view model exposes this as a boolean:
+The [`ConnectionState`](Connection-Model) view model exposes this as a boolean:
 
 ```php
 $state = ConnectionState::forUser( $user->id, app( ScopeRegistry::class ) );

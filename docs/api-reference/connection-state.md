@@ -40,7 +40,7 @@ Every property is `public readonly`:
 | `isConnected` | `bool` | Whether the connection exists and its status is `connected`. |
 | `email` | `string\|null` | `$connection->email` when connected, `null` otherwise. |
 | `grantedScopes` | `list<string>` | Scopes the connection holds. Empty when disconnected. |
-| `requiredScopes` | `list<string>` | Full union from the [[Scopes|registry]]. |
+| `requiredScopes` | `list<string>` | Full union from the [registry](Scopes). |
 | `missingScopes` | `list<string>` | `requiredScopes` − `grantedScopes`. |
 | `needsReauthorize` | `bool` | `isConnected && missingScopes !== []`. |
 
@@ -84,7 +84,7 @@ Serialize as JSON for API responses:
 
 Note `disconnectReason` — pulled from `$connection?->disconnect_reason` in `toArray()` since the property itself lives on the model, not the state.
 
-The `GoogleAuthController::status()` endpoint uses this method plus a `urls` block. See [[Connection UI/Custom#Status payload|Custom UI → Status payload]] for the full shape.
+The `GoogleAuthController::status()` endpoint uses this method plus a `urls` block. See [Custom UI → Status payload](Connection-UI-Custom#status-payload) for the full shape.
 
 ## Consumer surfaces
 

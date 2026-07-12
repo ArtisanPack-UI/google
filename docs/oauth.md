@@ -20,7 +20,7 @@ The service provider mounts five routes under `google.routes.prefix` (default `/
 | `/disconnect` | POST | `google.auth.disconnect` | Mark the current user's connection disconnected. |
 | `/status` | GET | `google.auth.status` | JSON status payload consumed by the React and Vue UIs. |
 
-All five are configured with `web` middleware by default. All five expect an authenticated user (the controller `abort( 401 )`s on `null`). See [[Installation/Configuration#Routes|Configuration → Routes]] for how to customize.
+All five are configured with `web` middleware by default. All five expect an authenticated user (the controller `abort( 401 )`s on `null`). See [Configuration → Routes](Installation-Configuration#routes) for how to customize.
 
 Set `google.routes.enabled = false` to skip the built-in routes entirely (useful if your app wants to bind the manager services but use its own controller / URL structure).
 
@@ -60,8 +60,8 @@ Set `google.routes.enabled = false` to skip the built-in routes entirely (useful
 
 `authorizationUrl()` builds the URL with:
 
-- `client_id`, `redirect_uri` from the configured [[Credential Drivers|credential driver]].
-- `scope` = the full de-duplicated union of everything the [[Scopes|scope registry]] returns.
+- `client_id`, `redirect_uri` from the configured [credential driver](Drivers).
+- `scope` = the full de-duplicated union of everything the [scope registry](Scopes) returns.
 - `state` = a random 40-char string, stored in the session.
 - `code_challenge` / `code_challenge_method=S256` — PKCE. The verifier is stored in the session; the challenge is the SHA-256 hash.
 - `access_type=offline` — required to receive a refresh token.
@@ -70,7 +70,7 @@ Set `google.routes.enabled = false` to skip the built-in routes entirely (useful
 
 If the credential driver reports `isConfigured() === false`, this throws `OAuthException("Google OAuth credentials are not configured.")`.
 
-Details: [[OAuth/Connect|OAuth → Connect]].
+Details: [OAuth → Connect](Oauth-Connect).
 
 ## Callback
 
@@ -92,11 +92,11 @@ Google redirects back to `google.auth.callback` with either `?code=…&state=…
 
 **Refresh token preservation**: Google only returns a `refresh_token` on the first consent (and on subsequent consents when `prompt=consent` is used with a new grant). Incremental-consent regrants typically omit it. `handleCallback()` only overwrites the stored refresh token when the response contains one — otherwise the existing one is preserved.
 
-Details: [[OAuth/Callback|OAuth → Callback]].
+Details: [OAuth → Callback](Oauth-Callback).
 
 ## Reauthorize
 
-When a new service package is installed after a user is already connected, the [[Scopes|scope registry]] starts returning scopes the connection doesn't hold. `GoogleAuthController::reauthorize()`:
+When a new service package is installed after a user is already connected, the [scope registry](Scopes) starts returning scopes the connection doesn't hold. `GoogleAuthController::reauthorize()`:
 
 1. Requires an authenticated user.
 2. Builds a `ConnectionState` for the user. If they aren't connected at all, redirects to `google.auth.connect` (so onboarding, gating, and analytics that hang off connect still fire).
@@ -106,7 +106,7 @@ When a new service package is installed after a user is already connected, the [
 
 If nothing is missing (edge case — the caller shouldn't normally hit this route), the method falls back to requesting the full union to keep the URL valid.
 
-Details: [[OAuth/Reauthorize|OAuth → Reauthorize]].
+Details: [OAuth → Reauthorize](Oauth-Reauthorize).
 
 ## Disconnect
 
@@ -114,23 +114,23 @@ Details: [[OAuth/Reauthorize|OAuth → Reauthorize]].
 
 **Local-only** — the flow does not hit Google's revoke endpoint. If you need remote revocation, POST to `https://oauth2.googleapis.com/revoke` from your own code with the stored refresh token before you call `markDisconnected()`.
 
-Details: [[OAuth/Disconnect|OAuth → Disconnect]].
+Details: [OAuth → Disconnect](Oauth-Disconnect).
 
 ## Exceptions
 
 The OAuth manager throws two exception types:
 
 - `ArtisanPackUI\Google\Exceptions\OAuthException` — thrown by `authorizationUrl()` when credentials are missing, and by `handleCallback()` on state mismatch, missing PKCE verifier, or a failed code exchange.
-- `ArtisanPackUI\Google\Exceptions\TokenRefreshException` — thrown by the [[Tokens|token manager]] when a refresh fails.
+- `ArtisanPackUI\Google\Exceptions\TokenRefreshException` — thrown by the [token manager](Tokens) when a refresh fails.
 
 The default controller catches `OAuthException` in `callback()` and flashes the message; other callers should handle it themselves.
 
 ## Deeper topics
 
-- [[OAuth/Connect|Connect]] — building the authorize URL, PKCE, session state, error modes.
-- [[OAuth/Callback|Callback]] — code exchange, id_token decoding, refresh-token preservation.
-- [[OAuth/Reauthorize|Reauthorize]] — incremental consent details and when to trigger it.
-- [[OAuth/Disconnect|Disconnect]] — local vs. remote revocation, restoring a disconnected connection.
+- [Connect](Oauth-Connect) — building the authorize URL, PKCE, session state, error modes.
+- [Callback](Oauth-Callback) — code exchange, id_token decoding, refresh-token preservation.
+- [Reauthorize](Oauth-Reauthorize) — incremental consent details and when to trigger it.
+- [Disconnect](Oauth-Disconnect) — local vs. remote revocation, restoring a disconnected connection.
 
 ---
-Continue to [[Scopes]] →
+Continue to [Scopes](Scopes) →

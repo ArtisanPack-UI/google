@@ -72,9 +72,9 @@ Google::scopes()->missing( $granted );          // ['https://www.googleapis.com/
 Google::scopes()->hasAllRequired( $granted );   // false
 ```
 
-The [[Connection Model|`ConnectionState`]] view model exposes this pre-computed as `missingScopes` and `needsReauthorize`, so most callers won't touch the registry directly.
+The [`ConnectionState`](Connection-Model) view model exposes this pre-computed as `missingScopes` and `needsReauthorize`, so most callers won't touch the registry directly.
 
-See [[OAuth/Reauthorize]] for how to build the incremental-consent URL from a granted-scope list.
+See [OAuth/Reauthorize](Oauth-Reauthorize) for how to build the incremental-consent URL from a granted-scope list.
 
 ## Scope hygiene
 

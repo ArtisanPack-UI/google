@@ -28,7 +28,7 @@ The published file is the source of truth — this page mirrors it and explains 
 'redirect_uri'  => env( 'GOOGLE_REDIRECT_URI' ),
 ```
 
-Only read by the [[Credential Drivers#config|config driver]]. The `database` and `cms` drivers ignore these values and pull from their own storage.
+Only read by the [config driver](Drivers#config). The `database` and `cms` drivers ignore these values and pull from their own storage.
 
 - **`client_id`** — Google OAuth 2.0 Client ID (`*.apps.googleusercontent.com`).
 - **`client_secret`** — Client secret from the Cloud Console. Treat as a secret; do not commit.
@@ -50,7 +50,7 @@ Which driver backs the `ConfigurationRepository` contract. Supported values:
 
 OAuth **tokens** are always stored in the `google_connections` table regardless of this setting. This key controls credential (client ID / secret / redirect URI) storage only.
 
-See [[Credential Drivers]] for the full comparison and switching guidance.
+See [Credential Drivers](Drivers) for the full comparison and switching guidance.
 
 ## OAuth endpoints
 
@@ -68,7 +68,7 @@ Google's OAuth endpoints. Overridable for tests — point them at a mock in your
 config( [ 'google.endpoints.token' => 'http://localhost/mock/token' ] );
 ```
 
-The `revoke` endpoint is included for callers who want to hit Google's revocation endpoint directly. The built-in disconnect flow is local-only — see [[OAuth Flow#Disconnect]].
+The `revoke` endpoint is included for callers who want to hit Google's revocation endpoint directly. The built-in disconnect flow is local-only — see [OAuth Flow#Disconnect](Oauth#disconnect).
 
 ## Routes
 
@@ -102,6 +102,6 @@ Handy for multi-model apps (e.g., a `Tenant` model that "connects" to Google alo
 
 ## Related pages
 
-- [[Installation/Environment Variables|Environment variables]] — every env var, in one table.
-- [[Credential Drivers]] — driver behavior in depth.
-- [[OAuth Flow]] — how the routes are wired end-to-end.
+- [Environment variables](Installation-Environment-Variables) — every env var, in one table.
+- [Credential Drivers](Drivers) — driver behavior in depth.
+- [OAuth Flow](Oauth) — how the routes are wired end-to-end.

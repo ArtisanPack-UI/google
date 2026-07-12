@@ -4,7 +4,7 @@ title: Vue Component
 
 # Vue Component
 
-`GoogleConnectionManager` is a Vue 3 SFC that consumes the JSON status endpoint and renders the same connect / disconnect / reauthorize UI as the [[Connection UI/Livewire|Livewire]] and [[Connection UI/React|React]] surfaces.
+`GoogleConnectionManager` is a Vue 3 SFC that consumes the JSON status endpoint and renders the same connect / disconnect / reauthorize UI as the [Livewire](Connection-UI-Livewire) and [React](Connection-UI-React) surfaces.
 
 ## Getting the source
 
@@ -97,7 +97,7 @@ createApp( {
 } ).mount( el );
 ```
 
-See the [[Connection UI/React#Labels|React labels section]] for the full label shape — it's identical.
+See the [React labels section](Connection-UI-React#labels) for the full label shape — it's identical.
 
 ## Using inside a Vue SPA
 
@@ -148,7 +148,7 @@ function onDisconnected() {
 
 ## The shared API client
 
-Same client as the React component — see [[Connection UI/React#The shared API client|React → The shared API client]] for details.
+Same client as the React component — see [React → The shared API client](Connection-UI-React#the-shared-api-client) for details.
 
 ## Testing
 

@@ -12,7 +12,7 @@ No. External OAuth clients work with any Google account. Workspace accounts are 
 
 ### Can I use this package without Livewire?
 
-Yes. Livewire is a peer dependency for the `<livewire:google-connection-manager />` component only. The base package boots without Livewire — the OAuth flow, token manager, scope registry, and JSON status endpoint all work independently. Use the [[Connection UI/React|React]] or [[Connection UI/Vue|Vue]] components, or build your own on the [[Connection UI/Custom|status endpoint]].
+Yes. Livewire is a peer dependency for the `<livewire:google-connection-manager />` component only. The base package boots without Livewire — the OAuth flow, token manager, scope registry, and JSON status endpoint all work independently. Use the [React](Connection-UI-React) or [Vue](Connection-UI-Vue) components, or build your own on the [status endpoint](Connection-UI-Custom).
 
 ### Can I use this package without the CMS framework?
 
@@ -28,7 +28,7 @@ Depends on your setup:
 - **Multi-tenant** or credentials managed via an admin UI → `database` driver. Secret is encrypted with `APP_KEY`.
 - **CMS-driven** projects → `cms` driver. Same encryption story.
 
-See [[Credential Drivers]] for the full comparison.
+See [Credential Drivers](Drivers) for the full comparison.
 
 ### What happens when I rotate `APP_KEY`?
 
@@ -57,7 +57,7 @@ Every tenant then gets its own `google_configurations` row on its own database c
 
 The package hardcodes `prompt=consent` on the authorize URL. This forces the consent screen every time, which guarantees Google returns a fresh `refresh_token`. Without it, repeat connects from an already-consented account get access tokens with no refresh token attached — and the connection would silently break on next expiry.
 
-Downside: users see the consent screen every time they hit `/connect`. Since most apps only connect once per user, this is usually invisible. If your flow legitimately reconnects often, consider [[OAuth/Reauthorize|`/reauthorize`]] instead — it only prompts for scopes the user hasn't already granted.
+Downside: users see the consent screen every time they hit `/connect`. Since most apps only connect once per user, this is usually invisible. If your flow legitimately reconnects often, consider [`/reauthorize`](Oauth-Reauthorize) instead — it only prompts for scopes the user hasn't already granted.
 
 ### Why doesn't the callback verify the id_token signature?
 
@@ -73,7 +73,7 @@ Local-only disconnect is faster, doesn't require a network round-trip, and avoid
 - The token expires (Testing-mode apps: 7 days).
 - Your app hits Google's revoke endpoint.
 
-If you need remote revocation, POST to `https://oauth2.googleapis.com/revoke` before calling `markDisconnected()`. See [[OAuth/Disconnect#Local-only revocation]].
+If you need remote revocation, POST to `https://oauth2.googleapis.com/revoke` before calling `markDisconnected()`. See [OAuth/Disconnect#Local-only revocation](Oauth-Disconnect#local-only-revocation).
 
 ### The refresh flow throws `invalid_grant`. What happened?
 
@@ -99,7 +99,7 @@ For app code: `Google::scopes()->register( 'https://www.googleapis.com/auth/new-
 
 Then: **add the scope in Google Cloud Console** under **OAuth consent screen → Scopes**. Google rejects authorize requests that ask for scopes not listed there with `invalid_scope`.
 
-Users who were already connected will need to reauthorize — the [[Connection UI|connection UI]] surfaces this automatically when `needsReauthorize === true`.
+Users who were already connected will need to reauthorize — the [connection UI](Connection-UI) surfaces this automatically when `needsReauthorize === true`.
 
 ### Do users get re-prompted for every scope on incremental consent?
 

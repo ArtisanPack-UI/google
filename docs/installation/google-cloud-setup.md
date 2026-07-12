@@ -23,7 +23,7 @@ Navigate to **APIs & Services → OAuth consent screen**.
 
 Under **Scopes**, click **Add or remove scopes** and check every scope your installed service packages require.
 
-Each service package documents the exact scopes it registers via [[Scopes|`ap.google.scopes`]]. Add all of them here — the consent screen only shows scopes it recognizes, so a missing scope will make Google reject the authorize request at runtime.
+Each service package documents the exact scopes it registers via [`ap.google.scopes`](Scopes). Add all of them here — the consent screen only shows scopes it recognizes, so a missing scope will make Google reject the authorize request at runtime.
 
 The base package always adds these three baseline scopes (you don't need to add them yourself — Google always allows OpenID Connect scopes):
 
@@ -66,7 +66,7 @@ Hit **Create**. Google shows you the **Client ID** and **Client secret**.
 
 ## 7. Store the credentials in your app
 
-Depending on your [[Credential Drivers|driver]]:
+Depending on your [driver](Drivers):
 
 ### `config` driver (default)
 
