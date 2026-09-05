@@ -3,7 +3,7 @@
   "description": "Shared Google OAuth2 authentication, token storage/refresh, and scope management that powers ArtisanPack UI's Google service integrations.",
   "type": "library",
   "license": "MIT",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "keywords": [
     "laravel",
     "google",
