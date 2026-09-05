@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Dropped Laravel 10 support.** `illuminate/*` constraints narrowed to `^11.0|^12.0|^13.0`. The package's Eloquent models use the `casts()` method (Laravel 11+), which silently no-ops on Laravel 10, so the previously advertised `^10.0` was never actually usable ([#14](https://github.com/ArtisanPack-UI/google/issues/14)).
+
 ## [1.0.0] - 2026-07-10
 
 Initial release of the shared Google OAuth2 authentication, token storage/refresh, and scope management layer that powers every ArtisanPack UI Google service integration.

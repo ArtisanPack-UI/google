@@ -10,9 +10,9 @@ title: Requirements
 
 ## Laravel
 
-- **Laravel 10.x, 11.x, 12.x, or 13.x.** The package requires `illuminate/support`, `illuminate/database`, `illuminate/http`, `illuminate/routing`, and `illuminate/encryption` on the matching majors.
+- **Laravel 11.x, 12.x, or 13.x.** The package requires `illuminate/support`, `illuminate/database`, `illuminate/http`, `illuminate/routing`, and `illuminate/encryption` on the matching majors.
 
-The service provider registers with either the classic `config/app.php` providers array (Laravel 10) or `bootstrap/providers.php` (Laravel 11+). Laravel's package discovery handles it automatically.
+The service provider registers via `bootstrap/providers.php`. Laravel's package discovery handles it automatically.
 
 ## HTTP client
 
