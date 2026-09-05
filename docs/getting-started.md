@@ -11,7 +11,7 @@ See also: [Installation](Installation), [Credential Drivers](Drivers), [OAuth Fl
 ## Requirements
 
 - PHP 8.2+
-- Laravel 10.x, 11.x, 12.x, or 13.x
+- Laravel 11.x, 12.x, or 13.x
 - A Google Cloud project with an OAuth 2.0 client ID (Web application type)
 
 Optional peer packages:
