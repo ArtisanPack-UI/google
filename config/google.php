@@ -43,6 +43,37 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | OAuth Mode
+    |--------------------------------------------------------------------------
+    |
+    | "direct" (default) talks to Google with this app's own client ID and
+    | secret. "broker" runs connect, callback and refresh through an OAuth
+    | broker instead, so the site never holds a Google client secret — only
+    | the broker settings below.
+    |
+    */
+    'mode' => env( 'GOOGLE_OAUTH_MODE', 'direct' ),
+
+    /*
+    |--------------------------------------------------------------------------
+    | OAuth Broker
+    |--------------------------------------------------------------------------
+    |
+    | Used when `mode` is "broker". `return_url` defaults to the package's
+    | callback route and must be on the URL the site registered with the
+    | broker. Hosts can supply url / site_id / site_secret at runtime via the
+    | `ap.google.broker.credentials` filter instead.
+    |
+    */
+    'broker' => [
+        'url'         => env( 'GOOGLE_BROKER_URL' ),
+        'site_id'     => env( 'GOOGLE_BROKER_SITE_ID' ),
+        'site_secret' => env( 'GOOGLE_BROKER_SITE_SECRET' ),
+        'return_url'  => env( 'GOOGLE_BROKER_RETURN_URL' ),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | OAuth Endpoints
     |--------------------------------------------------------------------------
     */

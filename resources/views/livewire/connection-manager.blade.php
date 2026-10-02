@@ -12,6 +12,12 @@
     @if ( session( 'google.error' ) )
         <div class="google-connection-manager__flash google-connection-manager__flash--error">
             {{ session( 'google.error' ) }}
+
+            @if ( session( 'google.renew_url' ) )
+                <a href="{{ session( 'google.renew_url' ) }}" class="google-connection-manager__renew" target="_blank" rel="noopener noreferrer">
+                    {{ __( 'Renew license' ) }}
+                </a>
+            @endif
         </div>
     @endif
 

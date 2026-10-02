@@ -13,12 +13,15 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Google\Tokens;
 
+use ArtisanPackUI\Google\Broker\BrokerClient;
 use ArtisanPackUI\Google\Contracts\ConfigurationRepository;
+use ArtisanPackUI\Google\Exceptions\LicenseExpiredException;
+use ArtisanPackUI\Google\Exceptions\OAuthException;
 use ArtisanPackUI\Google\Exceptions\TokenRefreshException;
 use ArtisanPackUI\Google\Models\GoogleConnection;
+use ArtisanPackUI\Google\OAuth\GoogleClient;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Http\Client\Factory as HttpFactory;
-use Illuminate\Support\Carbon;
 
 /**
  * Handles token refresh and returns valid access tokens.
@@ -62,9 +65,13 @@ class TokenManager
     /**
      * Force a refresh regardless of expiry.
      *
+     * Goes to Google directly, or through the OAuth broker when
+     * `google.mode` is `broker`.
+     *
      * @since 1.0.0
      *
-     * @throws TokenRefreshException
+     * @throws LicenseExpiredException When the broker reports the site license has lapsed. The connection stays connected.
+     * @throws TokenRefreshException   For any other failure. A revoked grant also marks the connection disconnected.
      */
     public function refresh( GoogleConnection $connection ): string
     {
@@ -74,50 +81,52 @@ class TokenManager
             throw new TokenRefreshException( __( 'No refresh token stored for this connection.' ) );
         }
 
-        $endpoint = (string) $this->laravelConfig->get(
-            'google.endpoints.token',
-            'https://oauth2.googleapis.com/token',
-        );
-
-        $response = $this->http->asForm()->post( $endpoint, [
-            'client_id'     => (string) $this->config->getClientId(),
-            'client_secret' => (string) $this->config->getClientSecret(),
-            'refresh_token' => (string) $connection->refresh_token,
-            'grant_type'    => 'refresh_token',
-        ] );
-
-        if ( ! $response->successful() ) {
-            $body  = $response->json();
-            $error = is_array( $body ) ? ( $body[ 'error' ] ?? 'refresh_failed' ) : 'refresh_failed';
-
-            if ( 'invalid_grant' === $error ) {
+        try {
+            $tokens = BrokerClient::isEnabled( $this->laravelConfig )
+                ? $this->brokerClient()->refresh( (string) $connection->refresh_token )
+                : GoogleClient::make( $this->config, $this->http, $this->laravelConfig )
+                    ->refresh( (string) $connection->refresh_token );
+        } catch ( TokenRefreshException $e ) {
+            // Only a revoked grant disconnects. A lapsed broker license
+            // (LicenseExpiredException) leaves the connection intact so
+            // refreshes resume as soon as the license is renewed.
+            if ( 'invalid_grant' === $e->getError() ) {
                 $connection->markDisconnected( __( 'Refresh token revoked or expired.' ) );
             }
 
-            throw new TokenRefreshException(
-                __( 'Google token refresh failed: :error', [ 'error' => $error ] ),
-            );
+            throw $e;
         }
 
-        $payload = $response->json();
+        $connection->access_token  = $tokens->accessToken;
+        $connection->token_type    = $tokens->tokenType;
+        $connection->refresh_token = $tokens->refreshToken;
 
-        $connection->access_token = $payload[ 'access_token' ] ?? null;
-        $connection->token_type   = $payload[ 'token_type' ] ?? 'Bearer';
-
-        if ( isset( $payload[ 'expires_in' ] ) ) {
-            $connection->expires_at = Carbon::now()->addSeconds( (int) $payload[ 'expires_in' ] );
+        if ( null !== $tokens->expiresAt ) {
+            $connection->expires_at = $tokens->expiresAt;
         }
 
-        if ( ! empty( $payload[ 'refresh_token' ] ) ) {
-            $connection->refresh_token = $payload[ 'refresh_token' ];
-        }
-
-        if ( ! empty( $payload[ 'scope' ] ) ) {
-            $connection->scopes = explode( ' ', (string) $payload[ 'scope' ] );
+        if ( [] !== $tokens->scopes ) {
+            $connection->scopes = $tokens->scopes;
         }
 
         $connection->save();
 
         return (string) $connection->access_token;
+    }
+
+    /**
+     * Broker client built from the configured broker credentials.
+     *
+     * @since 1.2.0
+     *
+     * @throws TokenRefreshException When the broker is not configured.
+     */
+    protected function brokerClient(): BrokerClient
+    {
+        try {
+            return BrokerClient::fromConfig( $this->laravelConfig, $this->http );
+        } catch ( OAuthException $e ) {
+            throw new TokenRefreshException( $e->getMessage(), 'broker_not_configured', null, $e );
+        }
     }
 }
