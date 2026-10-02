@@ -4,6 +4,7 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Google\Exceptions;
 
+use ArtisanPackUI\Google\Exceptions\Concerns\CarriesOAuthError;
 use RuntimeException;
 
 /**
@@ -13,4 +14,5 @@ use RuntimeException;
  */
 class TokenRefreshException extends RuntimeException
 {
+    use CarriesOAuthError;
 }

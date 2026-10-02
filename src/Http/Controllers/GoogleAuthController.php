@@ -89,7 +89,7 @@ class GoogleAuthController extends Controller
     public function callback( Request $request ): RedirectResponse
     {
         if ( $error = $request->query( 'error' ) ) {
-            return $this->redirectAfterError()->with( 'google.error', (string) $error );
+            return $this->redirectWithError( (string) $error, (string) $request->query( 'renew_url', '' ) );
         }
 
         $code  = (string) $request->query( 'code', '' );
@@ -105,7 +105,7 @@ class GoogleAuthController extends Controller
         try {
             $this->oauth->handleCallback( $code, $state );
         } catch ( OAuthException $e ) {
-            return $this->redirectAfterError()->with( 'google.error', $e->getMessage() );
+            return $this->redirectWithError( $e->getMessage(), (string) $e->getRenewUrl() );
         }
 
         return $this->redirectAfterConnect()->with( 'google.status', 'connected' );
@@ -166,6 +166,23 @@ class GoogleAuthController extends Controller
         $state->connection?->markDisconnected( __( 'Disconnected by user.' ) );
 
         return $this->redirectAfterConnect()->with( 'google.status', 'disconnected' );
+    }
+
+    /**
+     * Redirect to the error target, flashing the error and — in broker mode,
+     * when it points at the broker's own host — the license `renew_url`.
+     *
+     * @since 1.2.0
+     */
+    protected function redirectWithError( string $error, string $renewUrl ): RedirectResponse
+    {
+        $redirect = $this->redirectAfterError()->with( 'google.error', $error );
+
+        if ( $this->oauth->isTrustedRenewUrl( $renewUrl ) ) {
+            $redirect->with( 'google.renew_url', $renewUrl );
+        }
+
+        return $redirect;
     }
 
     /**

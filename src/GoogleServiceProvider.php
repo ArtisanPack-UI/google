@@ -81,6 +81,8 @@ class GoogleServiceProvider extends ServiceProvider
                 $app->make( ScopeRegistry::class ),
                 $app->make( TokenManager::class ),
                 $app->make( OAuthManager::class ),
+                $app->make( HttpFactory::class ),
+                $app[ 'config' ],
             );
         } );
     }
