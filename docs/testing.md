@@ -132,6 +132,10 @@ expect( $connection->fresh()->status )->toBe( 'disconnected' );
 expect( $connection->fresh()->disconnect_reason )->toBe( 'Refresh token revoked or expired.' );
 ```
 
+### Broker mode and the stateless client
+
+Set `google.mode` to `broker`, fill `google.broker`, and fake `https://<broker>/api/v1/oauth/*` the same way — see [Broker Mode → Testing broker mode](Broker-Mode#testing-broker-mode). The [stateless client](Stateless-Client#testing) can be tested without any database rows at all.
+
 ## Testing scope contributions
 
 Register a scope inside the test and assert `all()` picks it up:

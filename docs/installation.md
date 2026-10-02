@@ -26,7 +26,7 @@ php artisan migrate
 
 This creates two tables:
 
-- `google_configurations` — used by the [database driver](Drivers#database) to store OAuth client credentials. Unused by the `config` and `cms` drivers.
+- `google_configurations` — used by the [database driver](Drivers-Database) to store OAuth client credentials. Unused by the `config` and `cms` drivers.
 - `google_connections` — the per-user connection row (encrypted access + refresh tokens, granted scopes, expiry, status).
 
 See [Connection Model](Connection-Model) for a full column reference.

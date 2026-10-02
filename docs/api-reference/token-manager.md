@@ -40,15 +40,19 @@ Throws `TokenRefreshException` on refresh failure.
 
 ### `refresh( GoogleConnection $connection ): string`
 
-Force a refresh regardless of expiry. POSTs to `google.endpoints.token` with the stored refresh token.
+Force a refresh regardless of expiry. In direct mode it calls `GoogleClient::refresh()` against `google.endpoints.token`; when `google.mode` is `broker` it calls `BrokerClient::refresh()` against the broker's `/oauth/refresh` (see [Broker Mode](Broker-Mode#refresh)).
 
 Behavior:
 
 - Missing refresh token → `markDisconnected('Missing refresh token.')` and throw.
-- Non-success response — parse `error` from the body:
-  - `invalid_grant` → `markDisconnected('Refresh token revoked or expired.')` and throw.
-  - Anything else → throw without changing the connection status.
-- Success → update `access_token`, `token_type`, `expires_at`, and (if present) `refresh_token` and `scopes`. Save and return the new access token.
+- Failure — the thrown exception's `getError()` decides:
+  - `invalid_grant` → `markDisconnected('Refresh token revoked or expired.')` and rethrow.
+  - `license_expired` (broker mode) → rethrow `LicenseExpiredException` without changing the connection.
+  - `broker_not_configured` (broker mode) → throw without changing the connection.
+  - Anything else → rethrow without changing the connection status.
+- Success → update `access_token`, `token_type`, `refresh_token` (the new one, or the existing one when not rotated), and (if present) `expires_at` and `scopes`. Save and return the new access token.
+
+Throws `LicenseExpiredException` (since 1.2.0, a `TokenRefreshException` subclass) or `TokenRefreshException`.
 
 ## Refresh window
 
@@ -61,4 +65,4 @@ The manager resolves `Illuminate\Http\Client\Factory` from the container. `Http:
 ## Related
 
 - [Tokens](Tokens) — usage, failure modes, retry patterns.
-- [`TokenRefreshException`](API-Reference-Exceptions).
+- [`TokenRefreshException` / `LicenseExpiredException`](API-Reference-Exceptions).

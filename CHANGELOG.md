@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-02
+
+### Added
+
+- **Stateless relay primitives** for OAuth brokers ([#17](https://github.com/ArtisanPack-UI/google/issues/17)). `Google::client( ?GoogleCredentials )` returns a `GoogleClient` built from runtime credentials (or the configured driver) that never touches the session or database: `authorizationUrl()` takes the caller's `state`, scopes, extra parameters and an optional PKCE verifier; `exchangeCode()` and `refresh()` return a `TokenResponse` value object (access/refresh token, expiry, granted scopes, id_token, account ID/email/name). `refresh()` takes a raw refresh-token string and keeps it when Google does not rotate it. `TokenResponse::toArray()` renders the broker's wire shape.
+- **Broker client mode** (`GOOGLE_OAUTH_MODE=broker`). Connect, callback and refresh run through an OAuth broker using only `google.broker.url`, `site_id` and `site_secret` — no Google client secret on the site. Signed `/authorize` links, one-time code exchange at `/token`, refreshes at `/refresh`, and incremental consent via `scopes=`. Broker credentials can be supplied at runtime through the `ap.google.broker.credentials` filter. `Google::broker()` and `Google::usesBroker()` expose the client and mode. The broker URL must be HTTPS (plain HTTP is accepted only for `localhost`, `*.localhost`, `*.test` and loopback hosts) since the site secret travels as a bearer token.
+- `LicenseExpiredException` (extends `TokenRefreshException`) for the broker's `402 license_expired` refresh response, carrying `getRenewUrl()`. The connection stays connected, unlike a revoked grant. The callback flashes a broker-host `renew_url` as `google.renew_url`, and the Livewire connection manager links to it.
+- `OAuthException` and `TokenRefreshException` now expose the OAuth error code via `getError()`.
+
+### Changed
+
+- `OAuthManager::handleCallback()` and `TokenManager::refresh()` are now thin wrappers that run the stateless primitives and then persist to `GoogleConnection`. Behavior in the default `direct` mode is unchanged.
+
+### Documentation
+
+- New [Broker Mode](docs/broker-mode.md) and [Stateless Client](docs/stateless-client.md) guides, plus API reference pages for `GoogleClient` / `GoogleCredentials`, `TokenResponse`, and `BrokerClient` / `BrokerCredentials`. The configuration, environment-variable, OAuth, token, exception, Livewire and FAQ pages cover the new `mode` / `broker` settings, the `ap.google.broker.credentials` filter, and the license-expired flow.
+
 ## [1.1.0] - 2026-09-05
 
 ### Changed

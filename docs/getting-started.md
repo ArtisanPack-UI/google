@@ -19,7 +19,7 @@ Optional peer packages:
 | Package | What it enables |
 |---|---|
 | [`livewire/livewire`](https://livewire.laravel.com/) `^3.6` | The `<livewire:google-connection-manager />` connect/disconnect/status UI. |
-| [`artisanpack-ui/cms-framework`](https://github.com/ArtisanPack-UI/cms-framework) | The [cms credential driver](Drivers#cms) — stores credentials via the CMS Settings module. |
+| [`artisanpack-ui/cms-framework`](https://github.com/ArtisanPack-UI/cms-framework) | The [cms credential driver](Drivers-Cms) — stores credentials via the CMS Settings module. |
 
 Neither is required; the base package boots and works without them.
 

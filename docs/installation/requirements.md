@@ -28,7 +28,7 @@ The service provider registers via `bootstrap/providers.php`. Laravel's package 
 | Package | Version | What it enables |
 |---|---|---|
 | [`livewire/livewire`](https://livewire.laravel.com/) | `^3.6` | The `<livewire:google-connection-manager />` Livewire component (see [Connection UI](Connection-UI)). The React and Vue equivalents do not require Livewire. |
-| [`artisanpack-ui/cms-framework`](https://github.com/ArtisanPack-UI/cms-framework) | any | The `cms` credential driver — stores credentials via the framework's Settings module (see [cms driver](Drivers#cms)). |
+| [`artisanpack-ui/cms-framework`](https://github.com/ArtisanPack-UI/cms-framework) | any | The `cms` credential driver — stores credentials via the framework's Settings module (see [cms driver](Drivers-Cms)). |
 
 Neither is required. The base package boots and works without them; the CMS driver simply refuses to save if the framework isn't installed, and the Livewire component is only registered when Livewire's class is autoloadable.
 
@@ -52,7 +52,7 @@ The package uses Laravel's `Encrypter` (`APP_KEY`) to encrypt:
 
 ## Session driver
 
-The [OAuth Flow](Oauth) uses the session to persist the CSRF `state`, PKCE `code_verifier`, and user id between the redirect to Google and the callback. Any Laravel session driver works — cookie, file, database, redis. Just make sure sessions are actually enabled on the route group that mounts the four package routes (the default `web` middleware satisfies this).
+The [OAuth Flow](Oauth) uses the session to persist the CSRF `state`, PKCE `code_verifier`, and user id between the redirect to Google and the callback. Any Laravel session driver works — cookie, file, database, redis. Just make sure sessions are actually enabled on the route group that mounts the five package routes (the default `web` middleware satisfies this).
 
 ## Frontend runtime (JS components only)
 

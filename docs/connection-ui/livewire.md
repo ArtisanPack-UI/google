@@ -26,6 +26,7 @@ The component reads the current auth user, builds a `ConnectionState`, and rende
 - **Disconnected** — shows a "Connect Google" link that points at `route('google.auth.connect')`.
 - **Connected** — shows "Connected as {email}", a POST-form Disconnect button, and (when `needsReauthorize`) a Reauthorize link + count of missing scopes.
 - **Details** — a collapsible `<details>` block lists granted or required scopes depending on state.
+- **Flash messages** — renders `session('google.error')` after a failed callback. In [broker mode](Broker-Mode#license-expiry), when `session('google.renew_url')` is also set (e.g. after `error=license_expired`), a "Renew license" link to it is rendered inside the error, opening in a new tab. *(Since 1.2.0; the React and Vue components don't render this link — read `google.renew_url` in your own view if you use them.)*
 
 ## Refresh after connect / disconnect
 

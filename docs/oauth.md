@@ -6,7 +6,9 @@ title: OAuth Flow
 
 The package implements the **OAuth 2.0 Authorization Code flow with PKCE** end-to-end. Users visit a "Connect Google" link, get redirected to Google's consent screen, come back to a package-owned callback, and land in your app with a persisted `GoogleConnection` row.
 
-This page walks through each leg. See the sub-pages for deeper coverage of specific stages.
+This page walks through each leg in the default **direct** mode. In [broker mode](Broker-Mode) (`GOOGLE_OAUTH_MODE=broker`, since 1.2.0) the same routes run the flow through an OAuth broker instead of talking to Google directly — the site never holds a Google client secret. See the sub-pages for deeper coverage of specific stages.
+
+Under the hood, `OAuthManager` keeps the session state and persists the connection, while the HTTP calls to Google go through the [stateless `GoogleClient`](Stateless-Client), which you can also use on its own.
 
 ## Routes
 
@@ -78,15 +80,15 @@ Google redirects back to `google.auth.callback` with either `?code=…&state=…
 
 `GoogleAuthController::callback()`:
 
-1. If `?error=…` is present, redirects to `google.routes.redirect_after_error` with `google.error` flashed to the session.
+1. If `?error=…` is present, redirects to `google.routes.redirect_after_error` with `google.error` flashed to the session. In broker mode a `?renew_url=…` on the broker's own host is also flashed as `google.renew_url`.
 2. Otherwise, requires both `code` and `state` in the query — missing either flashes an error and redirects.
 3. Delegates to `OAuthManager::handleCallback( $code, $state )`.
 
 `handleCallback()`:
 
-1. Pulls the stored `state`, `code_verifier`, and `user_id` from the session. Any missing value throws an `OAuthException`.
+1. Pulls the stored `state`, `code_verifier`, and `user_id` from the session. Any missing value throws an `OAuthException` (the verifier is only required in direct mode).
 2. Compares the returned `state` against the stored one with `hash_equals()` to defeat timing attacks. Mismatch = "possible CSRF attempt".
-3. POSTs to the token endpoint with `grant_type=authorization_code`, `code`, `code_verifier`, `client_id`, `client_secret`, `redirect_uri`.
+3. Exchanges the code via `GoogleClient::exchangeCode()`, which POSTs to the token endpoint with `grant_type=authorization_code`, `code`, `code_verifier`, `client_id`, `client_secret`, `redirect_uri`. (Broker mode: `BrokerClient::exchangeCode()` redeems the broker's one-time code instead.)
 4. Decodes the returned `id_token`'s payload (base64url) to extract `sub` (Google user id) and `email`. **The JWT signature is not verified** — the token arrived over TLS from Google's token endpoint, so the identity claims are trustworthy for persistence purposes only (not authorization).
 5. Loads or creates a `GoogleConnection` for the user, sets `access_token`, `refresh_token`, `expires_at`, `scopes`, `status = 'connected'`, and saves.
 
@@ -118,10 +120,13 @@ Details: [OAuth → Disconnect](Oauth-Disconnect).
 
 ## Exceptions
 
-The OAuth manager throws two exception types:
+The OAuth layer throws three exception types:
 
 - `ArtisanPackUI\Google\Exceptions\OAuthException` — thrown by `authorizationUrl()` when credentials are missing, and by `handleCallback()` on state mismatch, missing PKCE verifier, or a failed code exchange.
 - `ArtisanPackUI\Google\Exceptions\TokenRefreshException` — thrown by the [token manager](Tokens) when a refresh fails.
+- `ArtisanPackUI\Google\Exceptions\LicenseExpiredException` — a `TokenRefreshException` subclass thrown in [broker mode](Broker-Mode#license-expiry) when the site license has lapsed.
+
+Since 1.2.0 all of them expose the OAuth error code via `getError()` — see [Exceptions](API-Reference-Exceptions).
 
 The default controller catches `OAuthException` in `callback()` and flashes the message; other callers should handle it themselves.
 
@@ -131,6 +136,8 @@ The default controller catches `OAuthException` in `callback()` and flashes the 
 - [Callback](Oauth-Callback) — code exchange, id_token decoding, refresh-token preservation.
 - [Reauthorize](Oauth-Reauthorize) — incremental consent details and when to trigger it.
 - [Disconnect](Oauth-Disconnect) — local vs. remote revocation, restoring a disconnected connection.
+- [Broker Mode](Broker-Mode) — running the flow through an OAuth broker.
+- [Stateless Client](Stateless-Client) — the session-free primitives underneath.
 
 ---
 Continue to [Scopes](Scopes) →

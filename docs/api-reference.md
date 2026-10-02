@@ -10,6 +10,9 @@ Sub-pages by class:
 
 - [`Google` — the facade / helper root](API-Reference-Google)
 - [`OAuthManager`](API-Reference-Oauth-Manager)
+- [`GoogleClient` / `GoogleCredentials`](API-Reference-Google-Client) — stateless OAuth primitives
+- [`TokenResponse`](API-Reference-Token-Response)
+- [`BrokerClient` / `BrokerCredentials`](API-Reference-Broker-Client)
 - [`TokenManager`](API-Reference-Token-Manager)
 - [`ScopeRegistry`](API-Reference-Scope-Registry)
 - [`ConfigurationRepository`](API-Reference-Configuration-Repository) (contract + three drivers)
@@ -26,9 +29,15 @@ Google::config();    // ConfigurationRepository
 Google::scopes();    // ScopeRegistry
 Google::tokens();    // TokenManager
 Google::oauth();     // OAuthManager
+
+// Since 1.2.0
+Google::client();    // GoogleClient — stateless, built from the credential driver
+Google::client( new GoogleCredentials( $id, $secret, $redirect ) );
+Google::broker();    // BrokerClient — from google.broker config / filter
+Google::usesBroker(); // bool — google.mode === 'broker'
 ```
 
-Every accessor returns a singleton — the same instance is shared across the request lifecycle. The `Google` class itself just aggregates the four managers so callers have a single entry point.
+The four manager accessors return singletons — the same instance is shared across the request lifecycle. `client()` and `broker()` build a fresh, stateless client on every call. The `Google` class itself just aggregates these so callers have a single entry point.
 
 ## The helper
 
@@ -69,8 +78,14 @@ ArtisanPackUI\Google\
 │   └── CmsSettingsDriver.php
 ├── Contracts\
 │   └── ConfigurationRepository.php
+├── Broker\
+│   ├── BrokerClient.php                — broker /authorize, /token, /refresh
+│   └── BrokerCredentials.php
 ├── OAuth\
-│   └── OAuthManager.php
+│   ├── GoogleClient.php                — stateless Google OAuth primitives
+│   ├── GoogleCredentials.php
+│   ├── OAuthManager.php
+│   └── TokenResponse.php
 ├── Scopes\
 │   └── ScopeRegistry.php
 ├── Tokens\
@@ -81,10 +96,13 @@ ArtisanPackUI\Google\
 │   └── ConnectionState.php
 ├── Http\
 │   └── Controllers\
-│       └── GoogleAuthController.php    — the four routes
+│       └── GoogleAuthController.php    — the five routes
 ├── Livewire\
 │   └── ConnectionManager.php           — <livewire:google-connection-manager />
 └── Exceptions\
+    ├── Concerns\
+    │   └── CarriesOAuthError.php       — getError() / getRenewUrl()
+    ├── LicenseExpiredException.php
     ├── OAuthException.php
     └── TokenRefreshException.php
 ```
@@ -111,6 +129,7 @@ Reference: [OAuth Flow#Routes](Oauth#routes)
 | Hook | Contract | Purpose |
 |---|---|---|
 | `ap.google.scopes` | Filter — receives and returns `array<int, string>` | Contribute scopes to the [registry](Scopes). Fires inside `ScopeRegistry::all()`. |
+| `ap.google.broker.credentials` | Filter — receives and returns `array{url, site_id, site_secret}` | Supply [broker](Broker-Mode#supplying-credentials-at-runtime) credentials at runtime instead of from config. Fires inside `BrokerCredentials::fromConfig()`. Since 1.2.0. |
 
 ## Event listeners (Livewire)
 

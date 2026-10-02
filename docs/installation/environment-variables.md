@@ -16,6 +16,18 @@ Every env var the package reads, in one place.
 | `GOOGLE_CONFIG_DRIVER` | `config` \| `database` \| `cms` | `config` | Service provider. Selects which credential driver backs the `ConfigurationRepository` binding. |
 | `GOOGLE_USER_MODEL` | class-string | `App\Models\User` | `GoogleConnection::user()`. Rarely needed. |
 
+## Broker mode
+
+*Since 1.2.0.* See [Broker Mode](Broker-Mode).
+
+| Variable | Type | Default | Read by |
+|---|---|---|---|
+| `GOOGLE_OAUTH_MODE` | `direct` \| `broker` | `direct` | `OAuthManager`, `TokenManager`, `Google::usesBroker()`. |
+| `GOOGLE_BROKER_URL` | URL (HTTPS) | `null` | `BrokerCredentials::fromConfig()` (via the `ap.google.broker.credentials` filter). |
+| `GOOGLE_BROKER_SITE_ID` | string | `null` | Same. |
+| `GOOGLE_BROKER_SITE_SECRET` | string | `null` | Same. Secret — do not commit. |
+| `GOOGLE_BROKER_RETURN_URL` | URL | `null` → `route('google.auth.callback')` | `OAuthManager` when building the broker `/authorize` link. |
+
 ## Framework env vars this package leans on
 
 | Variable | Why it matters |
@@ -51,6 +63,18 @@ CMS-managed credentials, if `artisanpack-ui/cms-framework` is installed:
 
 ```env
 GOOGLE_CONFIG_DRIVER=cms
+```
+
+Broker mode — no Google client credentials on the site at all:
+
+```env
+APP_URL=https://your-app.test
+APP_KEY=base64:...
+
+GOOGLE_OAUTH_MODE=broker
+GOOGLE_BROKER_URL=https://broker.example.com
+GOOGLE_BROKER_SITE_ID=site_123
+GOOGLE_BROKER_SITE_SECRET=42|plain-secret-from-the-broker
 ```
 
 ## Not env-backed

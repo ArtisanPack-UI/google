@@ -13,6 +13,7 @@ declare( strict_types=1 );
 
 namespace ArtisanPackUI\Google\OAuth;
 
+use ArtisanPackUI\Google\Broker\BrokerClient;
 use ArtisanPackUI\Google\Contracts\ConfigurationRepository;
 use ArtisanPackUI\Google\Exceptions\OAuthException;
 use ArtisanPackUI\Google\Models\GoogleConnection;
@@ -20,7 +21,7 @@ use ArtisanPackUI\Google\Scopes\ScopeRegistry;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Contracts\Session\Session;
 use Illuminate\Http\Client\Factory as HttpFactory;
-use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 
 /**
@@ -29,7 +30,9 @@ use Illuminate\Support\Str;
  * `authorizationUrl()` builds the URL to send the user to, stashing
  * `state` and `code_verifier` in the session. `handleCallback()`
  * validates state, exchanges the returned code, and persists the
- * connection.
+ * connection. The Google calls themselves go through the stateless
+ * {@see GoogleClient}, or through {@see BrokerClient} when
+ * `google.mode` is `broker`.
  *
  * @since 1.0.0
  */
@@ -90,7 +93,11 @@ class OAuthManager
     }
 
     /**
-     * Handle the OAuth callback: verify state and exchange the code.
+     * Handle the OAuth callback: verify state, exchange the code, and persist.
+     *
+     * In direct mode the code goes to Google with the PKCE verifier from the
+     * session; in broker mode the broker's one-time code goes to the broker.
+     * Either way the result is stored on the user's {@see GoogleConnection}.
      *
      * @since 1.0.0
      */
@@ -99,12 +106,13 @@ class OAuthManager
         $storedState    = $this->session->pull( self::SESSION_STATE );
         $verifier       = $this->session->pull( self::SESSION_VERIFIER );
         $userId         = $this->session->pull( self::SESSION_USER_ID );
+        $usesBroker     = $this->usesBroker();
 
         if ( empty( $storedState ) || ! hash_equals( (string) $storedState, $returnedState ) ) {
             throw new OAuthException( __( 'OAuth state mismatch; possible CSRF attempt.' ) );
         }
 
-        if ( empty( $verifier ) ) {
+        if ( ! $usesBroker && empty( $verifier ) ) {
             throw new OAuthException( __( 'PKCE code verifier missing from session.' ) );
         }
 
@@ -112,49 +120,80 @@ class OAuthManager
             throw new OAuthException( __( 'OAuth session missing user context.' ) );
         }
 
-        $endpoint = (string) $this->laravelConfig->get(
-            'google.endpoints.token',
-            'https://oauth2.googleapis.com/token',
-        );
+        $tokens = $usesBroker
+            ? $this->brokerClient()->exchangeCode( $code )
+            : $this->client()->exchangeCode( $code, (string) $verifier );
 
-        $response = $this->http->asForm()->post( $endpoint, [
-            'code'          => $code,
-            'client_id'     => $this->config->getClientId(),
-            'client_secret' => $this->config->getClientSecret(),
-            'redirect_uri'  => $this->config->getRedirectUri(),
-            'grant_type'    => 'authorization_code',
-            'code_verifier' => (string) $verifier,
-        ] );
+        return $this->persist( $userId, $tokens );
+    }
 
-        if ( ! $response->successful() ) {
-            $body  = $response->json();
-            $error = is_array( $body ) ? ( $body[ 'error' ] ?? 'exchange_failed' ) : 'exchange_failed';
-
-            throw new OAuthException(
-                __( 'Google code exchange failed: :error', [ 'error' => $error ] ),
-            );
+    /**
+     * Whether a license `renew_url` from the callback is safe to show the user.
+     *
+     * Only true in broker mode, for URLs on the broker's own host.
+     *
+     * @since 1.2.0
+     */
+    public function isTrustedRenewUrl( ?string $url ): bool
+    {
+        if ( ! $this->usesBroker() ) {
+            return false;
         }
 
-        $payload = $response->json();
+        try {
+            return $this->brokerClient()->isTrustedRenewUrl( $url );
+        } catch ( OAuthException ) {
+            return false;
+        }
+    }
 
-        $expiresAt = isset( $payload[ 'expires_in' ] )
-            ? Carbon::now()->addSeconds( (int) $payload[ 'expires_in' ] )
-            : null;
+    /**
+     * Whether the package is in broker client mode.
+     *
+     * @since 1.2.0
+     */
+    public function usesBroker(): bool
+    {
+        return BrokerClient::isEnabled( $this->laravelConfig );
+    }
 
-        $scopes = isset( $payload[ 'scope' ] )
-            ? explode( ' ', (string) $payload[ 'scope' ] )
-            : $this->scopes->all();
+    /**
+     * Stateless Google client built from the configured credentials.
+     *
+     * @since 1.2.0
+     */
+    public function client(): GoogleClient
+    {
+        return GoogleClient::make( $this->config, $this->http, $this->laravelConfig );
+    }
 
-        [ $googleUserId, $email ] = $this->extractIdentity( $payload[ 'id_token' ] ?? null );
+    /**
+     * Broker client built from the configured broker credentials.
+     *
+     * @since 1.2.0
+     *
+     * @throws OAuthException When the broker is not configured.
+     */
+    public function brokerClient(): BrokerClient
+    {
+        return BrokerClient::fromConfig( $this->laravelConfig, $this->http );
+    }
 
+    /**
+     * Save an exchanged token set on the user's connection.
+     *
+     * @since 1.2.0
+     */
+    protected function persist( int|string $userId, TokenResponse $tokens ): GoogleConnection
+    {
         $connection = GoogleConnection::firstOrNew( [ 'user_id' => $userId ] );
 
-        $connection->google_user_id    = $googleUserId ?? $connection->google_user_id;
-        $connection->email             = $email ?? $connection->email;
-        $connection->access_token      = $payload[ 'access_token' ] ?? null;
-        $connection->token_type        = $payload[ 'token_type' ] ?? 'Bearer';
-        $connection->scopes            = $scopes;
-        $connection->expires_at        = $expiresAt;
+        $connection->google_user_id    = $tokens->accountId ?? $connection->google_user_id;
+        $connection->email             = $tokens->accountEmail ?? $connection->email;
+        $connection->access_token      = $tokens->accessToken;
+        $connection->token_type        = $tokens->tokenType;
+        $connection->scopes            = $this->resolveGrantedScopes( $connection, $tokens );
+        $connection->expires_at        = $tokens->expiresAt;
         $connection->status            = GoogleConnection::STATUS_CONNECTED;
         $connection->disconnect_reason = null;
 
@@ -163,8 +202,8 @@ class OAuthManager
         // Incremental-consent regrants typically omit it — we must preserve
         // whatever we already have on file rather than nulling it out and
         // silently disabling refresh for the user.
-        if ( ! empty( $payload[ 'refresh_token' ] ) ) {
-            $connection->refresh_token = $payload[ 'refresh_token' ];
+        if ( null !== $tokens->refreshToken ) {
+            $connection->refresh_token = $tokens->refreshToken;
         }
 
         $connection->save();
@@ -173,95 +212,97 @@ class OAuthManager
     }
 
     /**
+     * Scopes to store for an exchanged token set.
+     *
+     * Reported scopes always win. When none are reported, direct mode keeps
+     * its historical fallback to the full registry (Google omits `scope` only
+     * when it granted what was asked). The broker always reports scopes, so
+     * an empty list there means "unknown": keep what the connection already
+     * holds rather than claiming every registered scope, which would hide a
+     * needed reauthorization.
+     *
+     * @since 1.2.0
+     *
+     * @return list<string>
+     */
+    protected function resolveGrantedScopes( GoogleConnection $connection, TokenResponse $tokens ): array
+    {
+        if ( [] !== $tokens->scopes ) {
+            return $tokens->scopes;
+        }
+
+        if ( $this->usesBroker() ) {
+            return $connection->grantedScopes();
+        }
+
+        return $this->scopes->all();
+    }
+
+    /**
      * Shared URL builder used by both the initial and incremental consent flows.
      *
      * @since 1.0.0
      *
-     * @param  array<int, string>  $scopes  Scopes to send to Google.
+     * @param  array<int, string>  $scopes  Scopes to request.
      */
     protected function buildAuthorizationUrl( int|string $userId, array $scopes ): string
     {
+        if ( $this->usesBroker() ) {
+            return $this->buildBrokerAuthorizationUrl( $userId, $scopes );
+        }
+
         if ( ! $this->config->isConfigured() ) {
             throw new OAuthException( __( 'Google OAuth credentials are not configured.' ) );
         }
 
-        $state     = Str::random( 40 );
-        $verifier  = $this->generateVerifier();
-        $challenge = $this->generateChallenge( $verifier );
+        $state    = Str::random( 40 );
+        $verifier = GoogleClient::generateCodeVerifier();
 
         $this->session->put( self::SESSION_STATE, $state );
         $this->session->put( self::SESSION_VERIFIER, $verifier );
         $this->session->put( self::SESSION_USER_ID, $userId );
 
-        $params = [
-            'client_id'              => $this->config->getClientId(),
-            'redirect_uri'           => $this->config->getRedirectUri(),
-            'response_type'          => 'code',
-            'scope'                  => implode( ' ', $scopes ),
-            'access_type'            => 'offline',
-            'prompt'                 => 'consent',
-            'include_granted_scopes' => 'true',
-            'state'                  => $state,
-            'code_challenge'         => $challenge,
-            'code_challenge_method'  => 'S256',
-        ];
-
-        $endpoint = (string) $this->laravelConfig->get(
-            'google.endpoints.authorize',
-            'https://accounts.google.com/o/oauth2/v2/auth',
-        );
-
-        return $endpoint . '?' . http_build_query( $params );
+        return $this->client()->authorizationUrl( $state, $scopes, [], $verifier );
     }
 
     /**
-     * Decode the `sub` and `email` claims from Google's id_token JWT.
+     * Build the signed broker `/authorize` URL. The broker runs PKCE with
+     * Google itself, so only state and the user are kept in the session.
      *
-     * Google returns an id_token whenever the `openid` scope is requested
-     * (our baseline). We only trust the claims for identity persistence,
-     * not authorization, so verification of the JWT signature is not
-     * required here — the token came from the TLS-terminated exchange
-     * with Google. Returns [ null, null ] if the token is missing or
-     * malformed.
+     * @since 1.2.0
      *
-     * @since 1.0.0
-     *
-     * @return array{0: ?string, 1: ?string} [google_user_id, email]
+     * @param  array<int, string>  $scopes  Scopes to request.
      */
-    protected function extractIdentity( ?string $idToken ): array
+    protected function buildBrokerAuthorizationUrl( int|string $userId, array $scopes ): string
     {
-        if ( empty( $idToken ) ) {
-            return [ null, null ];
-        }
+        $broker = $this->brokerClient();
+        $state  = Str::random( 40 );
 
-        $parts = explode( '.', $idToken );
-        if ( 3 !== count( $parts ) ) {
-            return [ null, null ];
-        }
+        $this->session->put( self::SESSION_STATE, $state );
+        $this->session->forget( self::SESSION_VERIFIER );
+        $this->session->put( self::SESSION_USER_ID, $userId );
 
-        $payload = base64_decode( strtr( $parts[ 1 ], '-_', '+/' ), true );
-        if ( false === $payload ) {
-            return [ null, null ];
-        }
-
-        $claims = json_decode( $payload, true );
-        if ( ! is_array( $claims ) ) {
-            return [ null, null ];
-        }
-
-        return [
-            isset( $claims[ 'sub' ] )   ? (string) $claims[ 'sub' ]   : null,
-            isset( $claims[ 'email' ] ) ? (string) $claims[ 'email' ] : null,
-        ];
+        return $broker->authorizationUrl( $state, $this->brokerReturnUrl(), $scopes );
     }
 
-    protected function generateVerifier(): string
+    /**
+     * The URL the broker sends the browser back to: the configured
+     * `google.broker.return_url`, else the package's callback route.
+     *
+     * @since 1.2.0
+     */
+    protected function brokerReturnUrl(): string
     {
-        return rtrim( strtr( base64_encode( random_bytes( 64 ) ), '+/', '-_' ), '=' );
-    }
+        $configured = (string) $this->laravelConfig->get( 'google.broker.return_url', '' );
 
-    protected function generateChallenge( string $verifier ): string
-    {
-        return rtrim( strtr( base64_encode( hash( 'sha256', $verifier, true ) ), '+/', '-_' ), '=' );
+        if ( '' !== $configured ) {
+            return $configured;
+        }
+
+        if ( ! Route::has( 'google.auth.callback' ) ) {
+            throw new OAuthException( __( 'Set google.broker.return_url when the package routes are disabled.' ) );
+        }
+
+        return route( 'google.auth.callback' );
     }
 }

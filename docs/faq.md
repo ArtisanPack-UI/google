@@ -85,6 +85,18 @@ Three usual causes:
 
 The token manager marks the connection disconnected with reason `"Refresh token revoked or expired."` and throws `TokenRefreshException`. The user needs to re-run `/connect`.
 
+### Can I use the package without giving each site a Google client secret?
+
+Yes — since 1.2.0, set `GOOGLE_OAUTH_MODE=broker` and point the site at an OAuth broker with `GOOGLE_BROKER_URL`, `GOOGLE_BROKER_SITE_ID`, and `GOOGLE_BROKER_SITE_SECRET`. Connect, callback, and refresh then run through the broker, which holds the Google app credentials. Everything above that — routes, the connection model, `getValidAccessToken()` — works the same. See [Broker Mode](Broker-Mode).
+
+### Refreshes fail with "the site license has expired". Is the connection broken?
+
+No. In broker mode the broker can refuse refreshes for a lapsed license (HTTP 402). The token manager throws `LicenseExpiredException` but leaves the connection **connected** — renew the license at `$e->getRenewUrl()` and the next call refreshes normally, without reconnecting.
+
+### Can I exchange or refresh tokens without storing them in `google_connections`?
+
+Yes — use the [stateless client](Stateless-Client). `Google::client()->exchangeCode()` / `->refresh()` return a `TokenResponse` and never touch the session or database; pass `new GoogleCredentials( … )` to use credentials loaded at runtime.
+
 ## Scopes
 
 ### How do I add a new scope?
