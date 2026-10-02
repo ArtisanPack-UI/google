@@ -6,6 +6,8 @@ title: Tokens
 
 `ArtisanPackUI\Google\Tokens\TokenManager` is the only surface service packages need to interact with when making Google API calls. It returns a valid access token, refreshing transparently when the current one is close to expiring, and marks the connection disconnected on `invalid_grant`.
 
+It works the same in both OAuth modes — in [broker mode](Broker-Mode) refreshes go through the broker instead of Google, but callers don't change. If you need a refresh without a `GoogleConnection` row, use the [stateless client](Stateless-Client) (`Google::client()->refresh( $refreshToken )`).
+
 ## Getting a valid access token
 
 ```php
@@ -59,19 +61,22 @@ This bypasses the expiry check and always hits the refresh endpoint. Useful in t
 `TokenManager::refresh()`:
 
 1. If no refresh token is on file, calls `$connection->markDisconnected('Missing refresh token.')` and throws `TokenRefreshException("No refresh token stored for this connection.")`.
-2. Otherwise, POSTs to `google.endpoints.token` (default `https://oauth2.googleapis.com/token`):
+2. Otherwise, refreshes through the stateless [`GoogleClient`](API-Reference-Google-Client), which POSTs to `google.endpoints.token` (default `https://oauth2.googleapis.com/token`):
    ```
    client_id      = <from config driver>
    client_secret  = <from config driver>
    refresh_token  = <from connection>
    grant_type     = refresh_token
    ```
-3. On non-success:
-   - If Google returned `error=invalid_grant` → `markDisconnected('Refresh token revoked or expired.')`.
-   - Either way, throws `TokenRefreshException("Google token refresh failed: <error>")`.
+   In broker mode it calls the broker's `/api/v1/oauth/refresh` instead, authenticated with the site secret — no client secret involved.
+3. On failure, the thrown exception's `getError()` decides what happens:
+   - `invalid_grant` → `markDisconnected('Refresh token revoked or expired.')`, then rethrows `TokenRefreshException("Google token refresh failed: invalid_grant")`.
+   - `license_expired` (broker only) → rethrows `LicenseExpiredException`; the connection stays connected.
+   - Anything else → rethrows `TokenRefreshException` without touching the connection.
 4. On success, updates the connection:
-   - `access_token`, `token_type`, `expires_at` — always.
-   - `refresh_token` — only if the response included one. (Google's refresh endpoint typically **doesn't** return a new refresh token; the existing one is preserved.)
+   - `access_token`, `token_type` — always.
+   - `expires_at` — whenever the response includes `expires_in`.
+   - `refresh_token` — the new one if the response included one, otherwise the existing one is kept. (Google's refresh endpoint typically **doesn't** rotate refresh tokens.)
    - `scopes` — if the response includes them (rare on refresh; more common on the initial code exchange).
 
 Every path either returns a fresh access token or throws — there's no partial-success state.
@@ -106,14 +111,28 @@ The manager marks the connection disconnected with reason `"Refresh token revoke
 
 Any other error (`invalid_client`, `unauthorized_client`, etc.) — usually a misconfiguration. The connection is **not** marked disconnected in this case; the caller can retry after fixing config. Only `invalid_grant` triggers auto-disconnect.
 
+The error code is on the exception — branch on `$e->getError()` rather than the (translated) message.
+
+### `The Google connection cannot be refreshed because the site license has expired.`
+
+Broker mode only. The broker answered `/refresh` with HTTP 402 / `license_expired`. The manager throws `LicenseExpiredException` (a `TokenRefreshException` subclass) carrying `getRenewUrl()`. The connection is **not** disconnected — once the license is renewed, the next call refreshes normally. See [Broker Mode → License expiry](Broker-Mode#license-expiry).
+
+### `Google OAuth broker credentials are not configured.`
+
+Broker mode with no broker URL / site ID / site secret. Thrown as `TokenRefreshException` with `getError() === 'broker_not_configured'`; the connection is left alone.
+
 ## Handling exceptions in service packages
 
 ```php
+use ArtisanPackUI\Google\Exceptions\LicenseExpiredException;
 use ArtisanPackUI\Google\Exceptions\TokenRefreshException;
 use ArtisanPackUI\Google\Facades\Google;
 
 try {
     $token = Google::tokens()->getValidAccessToken( $connection );
+} catch ( LicenseExpiredException $e ) {
+    // Broker mode: the connection is fine, the site license isn't.
+    return back()->with( 'error', $e->getMessage() )->with( 'renew_url', $e->getRenewUrl() );
 } catch ( TokenRefreshException $e ) {
     // Re-fetch the connection; the manager may have flipped its status.
     $connection->refresh();

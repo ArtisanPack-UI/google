@@ -12,7 +12,7 @@ title: Callback
 public function callback( Request $request ): RedirectResponse
 {
     if ( $error = $request->query( 'error' ) ) {
-        return $this->redirectAfterError()->with( 'google.error', (string) $error );
+        return $this->redirectWithError( (string) $error, (string) $request->query( 'renew_url', '' ) );
     }
 
     $code  = (string) $request->query( 'code', '' );
@@ -28,12 +28,25 @@ public function callback( Request $request ): RedirectResponse
     try {
         $this->oauth->handleCallback( $code, $state );
     } catch ( OAuthException $e ) {
-        return $this->redirectAfterError()->with( 'google.error', $e->getMessage() );
+        return $this->redirectWithError( $e->getMessage(), (string) $e->getRenewUrl() );
     }
 
     return $this->redirectAfterConnect()->with( 'google.status', 'connected' );
 }
+
+protected function redirectWithError( string $error, string $renewUrl ): RedirectResponse
+{
+    $redirect = $this->redirectAfterError()->with( 'google.error', $error );
+
+    if ( $this->oauth->isTrustedRenewUrl( $renewUrl ) ) {
+        $redirect->with( 'google.renew_url', $renewUrl );
+    }
+
+    return $redirect;
+}
 ```
+
+`redirectWithError()` (since 1.2.0) only flashes `google.renew_url` in [broker mode](Broker-Mode#license-expiry), and only when the URL points at the broker's own host over HTTPS — a `renew_url` on the query string is attacker-controllable, so anything else is dropped.
 
 Route: `GET /google/auth/callback` → `google.auth.callback`.
 
@@ -41,7 +54,7 @@ Route: `GET /google/auth/callback` → `google.auth.callback`.
 
 The callback URL always ends up hitting one of three outcomes:
 
-1. **`?error=…`** — the user denied consent or Google rejected something. Redirect to `redirect_after_error` with `google.error = <error code>`.
+1. **`?error=…`** — the user denied consent, Google rejected something, or (broker mode) the broker refused — e.g. `error=license_expired`. Redirect to `redirect_after_error` with `google.error = <error code>`, plus a trusted `google.renew_url` when present.
 2. **Missing `code` or `state`** — malformed callback. Redirect to `redirect_after_error` with a translated message.
 3. **`OAuthException` from `handleCallback()`** — state mismatch, missing PKCE verifier, or token exchange failed. Redirect to `redirect_after_error` with the exception message.
 
@@ -51,7 +64,13 @@ You can read the flashed values in your redirect target:
 
 ```blade
 @if( session( 'google.error' ) )
-    <div class="alert alert-error">{{ session( 'google.error' ) }}</div>
+    <div class="alert alert-error">
+        {{ session( 'google.error' ) }}
+
+        @if( session( 'google.renew_url' ) )
+            <a href="{{ session( 'google.renew_url' ) }}" target="_blank" rel="noopener noreferrer">{{ __( 'Renew license' ) }}</a>
+        @endif
+    </div>
 @elseif( session( 'google.status' ) === 'connected' )
     <div class="alert alert-success">Google account connected.</div>
 @endif
@@ -79,22 +98,32 @@ if ( empty( $storedState ) || ! hash_equals( (string) $storedState, $returnedSta
 
 `hash_equals()` protects against timing attacks — never compare secrets with `===`.
 
-Missing verifier or user id also throw — this shouldn't happen unless the session was tampered with or the user hit `/callback` without going through `/connect` first.
+Missing verifier or user id also throw — this shouldn't happen unless the session was tampered with or the user hit `/callback` without going through `/connect` first. In broker mode there is no verifier (the broker runs PKCE with Google), so only `state` and the user id are required.
 
 ### 2. Exchange the code
 
 ```php
-$response = $this->http->asForm()->post( $endpoint, [
-    'code'          => $code,
-    'client_id'     => $this->config->getClientId(),
-    'client_secret' => $this->config->getClientSecret(),
-    'redirect_uri'  => $this->config->getRedirectUri(),
-    'grant_type'    => 'authorization_code',
-    'code_verifier' => (string) $verifier,
-] );
+$tokens = $usesBroker
+    ? $this->brokerClient()->exchangeCode( $code )
+    : $this->client()->exchangeCode( $code, (string) $verifier );
 ```
 
-Failed exchanges throw `OAuthException("Google code exchange failed: <error>")`. Common `<error>` values:
+In direct mode, [`GoogleClient::exchangeCode()`](API-Reference-Google-Client) POSTs to `google.endpoints.token`:
+
+```php
+[
+    'code'          => $code,
+    'client_id'     => $credentials->clientId,
+    'client_secret' => $credentials->clientSecret,
+    'redirect_uri'  => $credentials->redirectUri,
+    'grant_type'    => 'authorization_code',
+    'code_verifier' => $verifier,
+]
+```
+
+In broker mode, [`BrokerClient::exchangeCode()`](API-Reference-Broker-Client) redeems the broker's one-time code at `/api/v1/oauth/token`. Either way the result is a [`TokenResponse`](API-Reference-Token-Response) — nothing is persisted yet.
+
+Failed exchanges (non-2xx, or a 2xx without `access_token`) throw `OAuthException("Google code exchange failed: <error>")`, with `<error>` also available from `$e->getError()`. Common `<error>` values:
 
 | Error | Cause |
 |---|---|
@@ -104,21 +133,13 @@ Failed exchanges throw `OAuthException("Google code exchange failed: <error>")`.
 
 ### 3. Decode `id_token`
 
-Because the `openid` scope is in the baseline, Google returns an `id_token` JWT alongside the access token. The manager decodes the payload (base64url, JSON) to extract:
+Because the `openid` scope is in the baseline, Google returns an `id_token` JWT alongside the access token. `TokenResponse` decodes the payload (base64url, JSON) to extract:
 
-- `sub` → the stable Google user id, stored as `google_user_id`.
-- `email` → the email address, stored as `email`.
+- `sub` → `$tokens->accountId`, stored as `google_user_id`.
+- `email` → `$tokens->accountEmail`, stored as `email`. (In broker mode, the broker's `account_email` takes precedence over the claim.)
+- `name` → `$tokens->accountName` (not persisted on the connection).
 
-```php
-$parts   = explode( '.', $idToken );
-$payload = base64_decode( strtr( $parts[ 1 ], '-_', '+/' ), true );
-$claims  = json_decode( $payload, true );
-
-return [
-    $claims[ 'sub' ]   ?? null,
-    $claims[ 'email' ] ?? null,
-];
-```
+A missing or malformed `id_token` yields `null` for all three.
 
 **The JWT signature is not verified.** The `id_token` arrived over TLS from Google's token endpoint on a connection we initiated — the claims are trustworthy for identity persistence (labeling the row so we can show `email` in the UI). We do **not** use them for authorization decisions, so signature validation would be pointless overhead. If your use case actually authorizes off the `id_token`, verify the signature externally with a library like `firebase/php-jwt`.
 
@@ -127,17 +148,17 @@ return [
 ```php
 $connection = GoogleConnection::firstOrNew( [ 'user_id' => $userId ] );
 
-$connection->google_user_id    = $googleUserId ?? $connection->google_user_id;
-$connection->email             = $email ?? $connection->email;
-$connection->access_token      = $payload[ 'access_token' ] ?? null;
-$connection->token_type        = $payload[ 'token_type' ] ?? 'Bearer';
-$connection->scopes            = $scopes;
-$connection->expires_at        = $expiresAt;
+$connection->google_user_id    = $tokens->accountId ?? $connection->google_user_id;
+$connection->email             = $tokens->accountEmail ?? $connection->email;
+$connection->access_token      = $tokens->accessToken;
+$connection->token_type        = $tokens->tokenType;
+$connection->scopes            = $this->resolveGrantedScopes( $connection, $tokens );
+$connection->expires_at        = $tokens->expiresAt;
 $connection->status            = GoogleConnection::STATUS_CONNECTED;
 $connection->disconnect_reason = null;
 
-if ( ! empty( $payload[ 'refresh_token' ] ) ) {
-    $connection->refresh_token = $payload[ 'refresh_token' ];
+if ( null !== $tokens->refreshToken ) {
+    $connection->refresh_token = $tokens->refreshToken;
 }
 
 $connection->save();
@@ -146,9 +167,9 @@ $connection->save();
 Key details:
 
 - **`firstOrNew`** — one connection per user. Re-connecting overwrites the existing row.
-- **Refresh token preservation** — the setter is gated behind `! empty( $payload[ 'refresh_token' ] )`. Google only returns a refresh token on the first consent (and on subsequent consents when `prompt=consent` is used with a new grant). Incremental-consent regrants typically omit it. If we nulled it out on every callback we'd silently disable refresh for the user; instead we keep whatever we already have on file.
+- **Refresh token preservation** — the setter is gated behind `null !== $tokens->refreshToken`. Google only returns a refresh token on the first consent (and on subsequent consents when `prompt=consent` is used with a new grant). Incremental-consent regrants typically omit it. If we nulled it out on every callback we'd silently disable refresh for the user; instead we keep whatever we already have on file.
 - **Access + refresh token encryption** — handled by the model's `casts()` returning `'encrypted'`. The DB sees ciphertext.
-- **Scopes** — Google returns the effective scope list in the `scope` field of the response (space-separated). We split on `' '` and store as a JSON array; if the field is missing, we fall back to the union the scope registry returned.
+- **Scopes** — Google returns the effective scope list in the `scope` field of the response (space-separated). We split on `' '` and store as a JSON array. If the field is missing, direct mode falls back to the union the scope registry returned (Google omits `scope` only when it granted what was asked). Broker mode instead keeps the scopes the connection already held, because the broker always reports scopes and an empty list means "unknown" — claiming every registered scope could hide a needed reauthorization.
 - **`expires_at`** — computed as `now() + expires_in` seconds. If Google doesn't include `expires_in` (extremely rare), we store `null`, which the [token manager](Tokens) treats as "expired" and triggers a refresh on next use.
 - **`disconnect_reason = null`** — a re-connect clears the "why was this disconnected?" note from any prior disconnect.
 
@@ -160,3 +181,4 @@ Enable Laravel Boost's `read-log-entries` tool or run `php artisan pail` and rep
 - `OAuthException: PKCE code verifier missing from session` → same as above, or the session was flushed between `/connect` and `/callback`.
 - `OAuthException: Google code exchange failed: invalid_grant` → the code was reused (double-click on "Allow"?) or the redirect URIs disagree.
 - `OAuthException: Google code exchange failed: redirect_uri_mismatch` → the URL stored in your credential driver doesn't match what's registered on the Google OAuth client. Character-exact match required.
+- `google.error = license_expired` (broker mode) → the broker refused the connect because the site license has lapsed. Point the user at `google.renew_url`.

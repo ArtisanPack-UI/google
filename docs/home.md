@@ -14,6 +14,8 @@ Use the navigation below to explore topics. Links use the GitLab wiki page style
 - [Installation](Installation)
 - [Credential Drivers](Drivers)
 - [OAuth Flow](Oauth)
+- [Broker Mode](Broker-Mode)
+- [Stateless Client](Stateless-Client)
 - [Scopes](Scopes)
 - [Tokens](Tokens)
 - [Connection Model](Connection-Model)
@@ -34,6 +36,8 @@ If you're new here, start with [Getting Started](Getting-Started).
 - A **scope registry** that lets any installed service package contribute the scopes it needs. Consent covers the union so users only see one screen.
 - **Credential storage drivers** ([config, database, or CMS](Drivers)) so credentials can live wherever a project already stores its secrets.
 - **Connection-management UI** for Livewire, React, and Vue — all backed by the same routes and JSON status endpoint.
+- An optional **[broker mode](Broker-Mode)** that runs connect, callback and refresh through an OAuth broker, so a site never holds a Google client secret.
+- **[Stateless OAuth primitives](Stateless-Client)** (`Google::client()`) for exchanging and refreshing tokens without the session or database — the building blocks for an OAuth broker or custom token storage.
 
 ## What this package does not do
 

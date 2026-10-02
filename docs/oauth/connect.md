@@ -27,22 +27,35 @@ Route: `GET /google/auth/connect` → `google.auth.connect`.
 
 ## Building the URL
 
-`OAuthManager::authorizationUrl()` delegates to `buildAuthorizationUrl()`:
+`OAuthManager::authorizationUrl()` delegates to `buildAuthorizationUrl()`, which stores `state`, a fresh PKCE verifier and the user id in the session, then hands off to the stateless [`GoogleClient`](API-Reference-Google-Client):
+
+```php
+$state    = Str::random( 40 );
+$verifier = GoogleClient::generateCodeVerifier();
+
+// ...session writes...
+
+return $this->client()->authorizationUrl( $state, $scopes, [], $verifier );
+```
+
+`GoogleClient::authorizationUrl()` builds these parameters:
 
 ```php
 $params = [
-    'client_id'              => $this->config->getClientId(),
-    'redirect_uri'           => $this->config->getRedirectUri(),
+    'client_id'              => $credentials->clientId,
+    'redirect_uri'           => $credentials->redirectUri,
     'response_type'          => 'code',
     'scope'                  => implode( ' ', $scopes ),
     'access_type'            => 'offline',
     'prompt'                 => 'consent',
     'include_granted_scopes' => 'true',
     'state'                  => $state,
-    'code_challenge'         => $challenge,
+    'code_challenge'         => GoogleClient::codeChallenge( $verifier ),
     'code_challenge_method'  => 'S256',
 ];
 ```
+
+In [broker mode](Broker-Mode#connect) the manager builds a signed broker `/authorize` link instead and stores no verifier — the broker runs PKCE with Google itself.
 
 ### Parameters explained
 
@@ -56,7 +69,7 @@ $params = [
 
 ## Session state
 
-Three keys are written to the session:
+Three keys are written to the session (in broker mode, only `state` and `user_id` — the verifier key is cleared):
 
 | Key | Purpose |
 |---|---|
@@ -108,3 +121,11 @@ $url = Google::oauth()->authorizationUrl(
 ```
 
 This is unusual — service packages normally register their scopes through the `ap.google.scopes` filter hook and rely on the union — but it's there when you need it.
+
+## Without the session
+
+If you need a consent URL without the package's session handling — for example when relaying for another app — use the [stateless client](Stateless-Client) directly. It takes your own `state`, extra parameters such as `login_hint`, and an optional PKCE verifier:
+
+```php
+$url = Google::client()->authorizationUrl( $state, $scopes, [ 'login_hint' => $email ], $verifier );
+```

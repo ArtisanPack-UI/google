@@ -6,11 +6,13 @@ Shared Google OAuth2 authentication, token storage/refresh, and scope management
 - [Installation](#installation)
 - [Google Cloud Console setup](#google-cloud-console-setup)
 - [Credential storage: config vs. database vs. CMS](#credential-storage)
+- [Broker mode](#broker-mode)
 - [Connecting a user](#connecting-a-user)
 - [Registering scopes from a service package](#registering-scopes-from-a-service-package)
 - [Incremental consent](#incremental-consent)
 - [Connection-management UI](#connection-management-ui)
 - [Making API calls](#making-api-calls)
+- [Stateless OAuth primitives](#stateless-oauth-primitives)
 - [Configuration reference](#configuration-reference)
 - [Contributing](#contributing)
 
@@ -22,6 +24,8 @@ Shared Google OAuth2 authentication, token storage/refresh, and scope management
 - **Encrypted token storage** on a per-user `google_connections` model, with transparent refresh via the token manager.
 - A **scope registry** that lets any installed service package contribute the scopes it needs. Consent covers the union so users only see one screen.
 - **Credential storage drivers** (config file, database, or CMS Settings) so credentials can live wherever a project already stores its secrets.
+- An optional **broker mode** that runs the OAuth flow through an OAuth broker, so a site never holds a Google client secret.
+- **Stateless OAuth primitives** (`Google::client()`) for exchanging and refreshing tokens without touching the session or database.
 
 Service packages (Analytics, Search Console, Tag Manager, …) declare the scopes they need and, once a user has connected, call `Google::tokens()->getValidAccessToken( $connection )` to make authenticated API calls. They never handle OAuth themselves.
 
@@ -111,6 +115,19 @@ GOOGLE_CONFIG_DRIVER=cms
 ```
 
 The client secret is encrypted before it is passed to `apUpdateSetting()`. Reading and writing goes through `apGetSetting()` / `apUpdateSetting()`, so any Settings API a project already exposes can manage these credentials. If the CMS framework is not installed, the driver's setting keys are simply never registered — you get a clear "not configured" state instead of a hard boot error.
+
+## Broker mode
+
+Since 1.2.0 the package can run connect, callback and refresh through an OAuth broker instead of talking to Google directly. The site holds only the broker URL, its site ID and its site secret — never a Google client secret:
+
+```env
+GOOGLE_OAUTH_MODE=broker
+GOOGLE_BROKER_URL=https://broker.example.com
+GOOGLE_BROKER_SITE_ID=site_123
+GOOGLE_BROKER_SITE_SECRET=42|plain-secret-from-the-broker
+```
+
+Routes, the connection model, and `getValidAccessToken()` work unchanged. The broker URL must be HTTPS. Credentials can also be supplied at runtime via the `ap.google.broker.credentials` filter. If the broker refuses a refresh because the site license has lapsed, the token manager throws `LicenseExpiredException` (with `getRenewUrl()`) and leaves the connection connected. See [docs/broker-mode.md](docs/broker-mode.md).
 
 ## Connecting a user
 
@@ -252,6 +269,24 @@ Http::withToken( $token )
     ->get( 'https://analyticsdata.googleapis.com/v1beta/...' );
 ```
 
+## Stateless OAuth primitives
+
+`Google::client()` returns a `GoogleClient` that performs the Google OAuth calls without the session or database — useful for building an OAuth broker or storing tokens yourself:
+
+```php
+use ArtisanPackUI\Google\OAuth\GoogleCredentials;
+
+$client = Google::client( new GoogleCredentials( $clientId, $clientSecret, $redirectUri ) );
+
+$url    = $client->authorizationUrl( $state, $scopes, [], $verifier );
+$tokens = $client->exchangeCode( $code, $verifier );   // TokenResponse
+$tokens = $client->refresh( $refreshToken );           // TokenResponse
+
+$tokens->toArray(); // broker wire shape
+```
+
+See [docs/stateless-client.md](docs/stateless-client.md).
+
 ## Configuration reference
 
 Key options in `config/google.php`:
@@ -260,10 +295,13 @@ Key options in `config/google.php`:
 |---|---|---|
 | `client_id` / `client_secret` / `redirect_uri` | `env(...)` | Credentials used by the `config` driver. |
 | `driver` | `config` | Credential driver: `config`, `database`, or `cms`. |
+| `mode` | `direct` | `direct` or `broker`. |
+| `broker.url` / `broker.site_id` / `broker.site_secret` | `env(...)` | OAuth broker credentials (broker mode). |
+| `broker.return_url` | `env(...)` → callback route | Where the broker sends the browser back. |
 | `endpoints.authorize` | Google auth URL | Overridable for testing. |
 | `endpoints.token` | Google token URL | Overridable for testing. |
 | `routes.enabled` | `true` | Set false to skip the built-in web routes. |
-| `routes.prefix` | `google/auth` | Prefix for the four package routes. |
+| `routes.prefix` | `google/auth` | Prefix for the five package routes. |
 | `routes.middleware` | `['web']` | Middleware applied to the built-in routes. |
 | `routes.redirect_after_connect` | `/` | Path or route name to send users to after connect/disconnect. |
 | `routes.redirect_after_error` | `/` | Path or route name for OAuth errors. |

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-02
+
 ### Added
 
 - **Stateless relay primitives** for OAuth brokers ([#17](https://github.com/ArtisanPack-UI/google/issues/17)). `Google::client( ?GoogleCredentials )` returns a `GoogleClient` built from runtime credentials (or the configured driver) that never touches the session or database: `authorizationUrl()` takes the caller's `state`, scopes, extra parameters and an optional PKCE verifier; `exchangeCode()` and `refresh()` return a `TokenResponse` value object (access/refresh token, expiry, granted scopes, id_token, account ID/email/name). `refresh()` takes a raw refresh-token string and keeps it when Google does not rotate it. `TokenResponse::toArray()` renders the broker's wire shape.
@@ -17,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `OAuthManager::handleCallback()` and `TokenManager::refresh()` are now thin wrappers that run the stateless primitives and then persist to `GoogleConnection`. Behavior in the default `direct` mode is unchanged.
+
+### Documentation
+
+- New [Broker Mode](docs/broker-mode.md) and [Stateless Client](docs/stateless-client.md) guides, plus API reference pages for `GoogleClient` / `GoogleCredentials`, `TokenResponse`, and `BrokerClient` / `BrokerCredentials`. The configuration, environment-variable, OAuth, token, exception, Livewire and FAQ pages cover the new `mode` / `broker` settings, the `ap.google.broker.credentials` filter, and the license-expired flow.
 
 ## [1.1.0] - 2026-09-05
 

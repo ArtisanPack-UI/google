@@ -4,7 +4,7 @@ title: Google
 
 # `Google`
 
-`ArtisanPackUI\Google\Google` is the aggregator class the facade points at. It holds references to the four manager singletons and exposes them via accessor methods.
+`ArtisanPackUI\Google\Google` is the aggregator class the facade points at. It holds references to the four manager singletons and exposes them via accessor methods, plus factories for the stateless [Google](Stateless-Client) and [broker](Broker-Mode) clients.
 
 ## Constructor
 
@@ -14,6 +14,8 @@ public function __construct(
     protected ScopeRegistry $scopes,
     protected TokenManager $tokens,
     protected OAuthManager $oauth,
+    protected HttpFactory $http,              // since 1.2.0
+    protected ConfigRepository $laravelConfig, // since 1.2.0
 )
 ```
 
@@ -53,6 +55,35 @@ The [OAuth manager](API-Reference-Oauth-Manager).
 
 ```php
 $url = Google::oauth()->authorizationUrl( $userId );
+```
+
+### `client( ?GoogleCredentials $credentials = null ): GoogleClient`
+
+*Since 1.2.0.* A stateless Google OAuth client. With no arguments it uses the active credential driver; pass explicit `GoogleCredentials` to relay for another app, as an OAuth broker does. The client never touches the session or the database. See [Stateless Client](Stateless-Client).
+
+```php
+$tokens = Google::client()->refresh( $refreshToken );
+
+$tokens = Google::client( new GoogleCredentials( $clientId, $clientSecret, $redirectUri ) )
+    ->exchangeCode( $code, $verifier );
+```
+
+### `broker( ?BrokerCredentials $credentials = null ): BrokerClient`
+
+*Since 1.2.0.* A client for the OAuth broker, from explicit credentials or from `google.broker` config (via the `ap.google.broker.credentials` filter). Throws `OAuthException` when no credentials are passed and none are configured. See [Broker Mode](Broker-Mode).
+
+```php
+$tokens = Google::broker()->refresh( $refreshToken );
+```
+
+### `usesBroker(): bool`
+
+*Since 1.2.0.* Whether the package is in broker client mode (`google.mode` = `broker`).
+
+```php
+if ( Google::usesBroker() ) {
+    // No Google client secret on this site.
+}
 ```
 
 ## The facade
