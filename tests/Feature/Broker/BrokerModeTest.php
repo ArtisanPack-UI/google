@@ -114,6 +114,34 @@ it( 'exchanges the broker code and stores the connection exactly as in direct mo
     expect( Google::tokens()->getValidAccessToken( $connection ) )->toBe( 'broker-access' );
 } );
 
+it( 'keeps the existing scopes when the broker reports none', function (): void {
+    GoogleConnection::create( [
+        'user_id'       => 42,
+        'refresh_token' => 'r-old',
+        'scopes'        => [ 'openid' ],
+        'status'        => GoogleConnection::STATUS_CONNECTED,
+    ] );
+
+    Http::fake( [ 'workshop.test/*' => Http::response( brokerTokenPayload( [ 'scopes' => [] ] ) ) ] );
+
+    $oauth = app( OAuthManager::class );
+    $oauth->authorizationUrl( 42 );
+
+    expect( $oauth->handleCallback( 'c', session( 'google.oauth.state' ) )->scopes )->toBe( [ 'openid' ] );
+} );
+
+it( 'stores no scopes for a new connection when the broker reports none', function (): void {
+    Http::fake( [ 'workshop.test/*' => Http::response( brokerTokenPayload( [ 'scopes' => [] ] ) ) ] );
+
+    $oauth = app( OAuthManager::class );
+    $oauth->authorizationUrl( 42 );
+
+    $connection = $oauth->handleCallback( 'c', session( 'google.oauth.state' ) );
+
+    expect( $connection->scopes )->toBe( [] );
+    expect( Google::scopes()->hasAllRequired( $connection->grantedScopes() ) )->toBeFalse();
+} );
+
 it( 'still rejects a mismatched state in broker mode', function (): void {
     Http::fake();
 
@@ -253,6 +281,15 @@ describe( 'routes', function (): void {
 
     it( 'drops a renew URL that does not point at the broker', function (): void {
         $this->get( '/google/auth/callback?error=license_expired&state=s&renew_url=' . urlencode( 'https://evil.test/renew' ) )
+            ->assertSessionHas( 'google.error', 'license_expired' )
+            ->assertSessionMissing( 'google.renew_url' );
+    } );
+
+    it( 'still redirects with the error when the broker URL is insecure', function (): void {
+        config()->set( 'google.broker.url', 'http://workshop.example.com' );
+
+        $this->get( '/google/auth/callback?error=license_expired&renew_url=' . urlencode( 'http://workshop.example.com/renew' ) )
+            ->assertRedirect()
             ->assertSessionHas( 'google.error', 'license_expired' )
             ->assertSessionMissing( 'google.renew_url' );
     } );

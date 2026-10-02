@@ -221,3 +221,32 @@ it( 'refuses to build a client from incomplete broker config', function (): void
     expect( fn () => BrokerClient::fromConfig( config(), app( Illuminate\Http\Client\Factory::class ) ) )
         ->toThrow( OAuthException::class );
 } );
+
+it( 'refuses to send the site secret to a plain-HTTP broker outside local development', function ( string $url ): void {
+    expect( fn () => new BrokerCredentials( $url, 'site-123', '7|secret' ) )->toThrow( OAuthException::class );
+} )->with( [
+    'public http host'    => 'http://workshop.example.com',
+    'public http ip'      => 'http://203.0.113.10',
+    'non-http scheme'     => 'ftp://workshop.test',
+    'missing host'        => 'https:///api',
+    'test lookalike host' => 'http://workshop.test.example.com',
+] );
+
+it( 'accepts HTTPS and local development broker URLs', function ( string $url ): void {
+    expect( ( new BrokerCredentials( $url, 'site-123', '7|secret' ) )->url )->toBe( $url );
+} )->with( [
+    'https'           => 'https://workshop.example.com',
+    'localhost'       => 'http://localhost:8000',
+    'localhost alias' => 'http://workshop.localhost',
+    'herd .test'      => 'http://workshop.test',
+    'ipv4 loopback'   => 'http://127.0.0.1:8000',
+    'ipv6 loopback'   => 'http://[::1]:8000',
+] );
+
+it( 'rejects an insecure broker URL from config', function (): void {
+    config()->set( 'google.broker.url', 'http://workshop.example.com' );
+    config()->set( 'google.broker.site_id', 'site-123' );
+    config()->set( 'google.broker.site_secret', '7|secret' );
+
+    expect( fn () => BrokerCredentials::fromConfig( config() ) )->toThrow( OAuthException::class );
+} );

@@ -14,7 +14,6 @@ declare( strict_types=1 );
 namespace ArtisanPackUI\Google\OAuth;
 
 use ArtisanPackUI\Google\Broker\BrokerClient;
-use ArtisanPackUI\Google\Broker\BrokerCredentials;
 use ArtisanPackUI\Google\Contracts\ConfigurationRepository;
 use ArtisanPackUI\Google\Exceptions\OAuthException;
 use ArtisanPackUI\Google\Models\GoogleConnection;
@@ -141,10 +140,11 @@ class OAuthManager
             return false;
         }
 
-        $credentials = BrokerCredentials::fromConfig( $this->laravelConfig );
-
-        return null !== $credentials
-            && ( new BrokerClient( $credentials, $this->http ) )->isTrustedRenewUrl( $url );
+        try {
+            return $this->brokerClient()->isTrustedRenewUrl( $url );
+        } catch ( OAuthException ) {
+            return false;
+        }
     }
 
     /**
@@ -192,7 +192,7 @@ class OAuthManager
         $connection->email             = $tokens->accountEmail ?? $connection->email;
         $connection->access_token      = $tokens->accessToken;
         $connection->token_type        = $tokens->tokenType;
-        $connection->scopes            = [] === $tokens->scopes ? $this->scopes->all() : $tokens->scopes;
+        $connection->scopes            = $this->resolveGrantedScopes( $connection, $tokens );
         $connection->expires_at        = $tokens->expiresAt;
         $connection->status            = GoogleConnection::STATUS_CONNECTED;
         $connection->disconnect_reason = null;
@@ -209,6 +209,33 @@ class OAuthManager
         $connection->save();
 
         return $connection;
+    }
+
+    /**
+     * Scopes to store for an exchanged token set.
+     *
+     * Reported scopes always win. When none are reported, direct mode keeps
+     * its historical fallback to the full registry (Google omits `scope` only
+     * when it granted what was asked). The broker always reports scopes, so
+     * an empty list there means "unknown": keep what the connection already
+     * holds rather than claiming every registered scope, which would hide a
+     * needed reauthorization.
+     *
+     * @since 1.2.0
+     *
+     * @return list<string>
+     */
+    protected function resolveGrantedScopes( GoogleConnection $connection, TokenResponse $tokens ): array
+    {
+        if ( [] !== $tokens->scopes ) {
+            return $tokens->scopes;
+        }
+
+        if ( $this->usesBroker() ) {
+            return $connection->grantedScopes();
+        }
+
+        return $this->scopes->all();
     }
 
     /**
