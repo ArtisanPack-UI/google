@@ -285,6 +285,12 @@ describe( 'routes', function (): void {
             ->assertSessionMissing( 'google.renew_url' );
     } );
 
+    it( 'drops a forged renew URL that PHP parses to the broker host but a browser does not', function (): void {
+        $this->get( '/google/auth/callback?error=license_expired&state=s&renew_url=' . urlencode( 'https://evil.test\\@workshop.test/renew' ) )
+            ->assertSessionHas( 'google.error', 'license_expired' )
+            ->assertSessionMissing( 'google.renew_url' );
+    } );
+
     it( 'still redirects with the error when the broker URL is insecure', function (): void {
         config()->set( 'google.broker.url', 'http://workshop.example.com' );
 
