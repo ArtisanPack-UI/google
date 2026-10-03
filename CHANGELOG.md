@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-03
+
+### Security
+
+- **Broker `renew_url` trust check rejects parser-ambiguous URLs** ([#20](https://github.com/ArtisanPack-UI/google/issues/20)). `BrokerClient::isTrustedRenewUrl()` (and `OAuthManager::isTrustedRenewUrl()`, which wraps it) compared the host from PHP's `parse_url()` with the broker host, but PHP and browsers disagree on some URLs: `https://evil.test\@broker.test/renew` parses to `broker.test` in PHP and opens `evil.test` in a browser. A forged `renew_url` like this on the callback query string was flashed as `google.renew_url` and rendered as a "Renew license" link pointing off the broker. URLs containing a backslash, whitespace or a control character, URLs `parse_url()` can't parse, and URLs with userinfo are now rejected before the scheme and host checks. Callback state checks were not affected.
+
+### Documentation
+
+- The [Broker Mode](docs/broker-mode.md) security notes, the [Callback](docs/oauth/callback.md) guide and the `BrokerClient` API reference describe the stricter `renew_url` check.
+
 ## [1.2.0] - 2026-10-02
 
 ### Added

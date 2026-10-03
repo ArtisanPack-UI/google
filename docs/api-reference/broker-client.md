@@ -70,6 +70,8 @@ Hex HMAC-SHA256 over `"google\n" . http_build_query( ksort( $params ), RFC 3986 
 
 `true` only when `$url` is on the broker's host and uses HTTPS. HTTP is allowed only when the broker URL is also HTTP.
 
+*Since 1.3.0.* URLs that PHP's `parse_url()` and browsers could resolve to different hosts are rejected before the host comparison. That covers URLs containing a backslash, whitespace or a control character, URLs `parse_url()` can't parse, and any URL with userinfo (a username or password). For example, `https://evil.test\@broker.test/renew` parses to `broker.test` in PHP, but a browser opens `evil.test`, so it is never trusted.
+
 # `BrokerCredentials`
 
 `ArtisanPackUI\Google\Broker\BrokerCredentials` is the immutable set of values a site uses to talk to the broker.
