@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Broker `/authorize` links are signed with the derived key** ([#23](https://github.com/ArtisanPack-UI/google/issues/23)). `BrokerCredentials::signingKey()` returned the SHA-256 of the site secret's plain part, which is the hash a broker stores at rest; brokers now refuse it, so every connect attempt failed with a 403. The key is now `hash_hmac( 'sha256', 'jmwd-workshop:oauth-authorize', <plain part> )` (`BrokerCredentials::SIGNING_KEY_LABEL`). Sites registered with a broker before it switched to the derived key need a new site secret from the broker.
+- **Incremental consent through a broker keeps earlier scopes** ([#23](https://github.com/ArtisanPack-UI/google/issues/23)). The broker doesn't send `include_granted_scopes`, so `OAuthManager::reauthorizationUrl()` asking for only the missing scopes left the connection with just those. In broker mode it now asks for the granted scopes plus the registry's. Direct mode is unchanged.
+- **Concurrent refreshes no longer disconnect a working connection** ([#23](https://github.com/ArtisanPack-UI/google/issues/23)). `TokenManager::refresh()` now holds a per-connection cache lock and reuses a token another process already refreshed. The broker's `409 refresh_superseded` (a refresh token rotated by a concurrent request moments ago) never disconnects: the connection's newer token is used, or a `TokenRefreshException` is thrown. A refresh that waits over 10 seconds for the lock throws `refresh_in_progress`.
+
+### Security
+
+- **The callback checks state before flashing an error** ([#23](https://github.com/ArtisanPack-UI/google/issues/23)). `GoogleAuthController::callback()` flashed any `error` (and a trusted `renew_url`) from the query string. It now pulls the flow from the session with the new `OAuthManager::abandonCallback()` and flashes a generic error unless the callback carries the session's state.
+
 ## [1.3.0] - 2026-10-03
 
 ### Security

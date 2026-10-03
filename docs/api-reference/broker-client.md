@@ -94,7 +94,7 @@ final class BrokerCredentials
 - **Constructor**: throws `OAuthException` when `isSecureUrl( $url )` is `false`.
 - **`isSecureUrl()`**: `https://` with a host, or `http://` on `localhost`, `*.localhost`, `*.test`, `127.*` or `::1`.
 - **`fromConfig()`**: reads `google.broker.url` / `site_id` / `site_secret`, runs them through the `ap.google.broker.credentials` filter, trims them (and the URL's trailing slash), and returns `null` if any is empty.
-- **`signingKey()`**: `hash( 'sha256', <part of the site secret after the first "|"> )`. The whole secret is used when there's no `|`.
+- **`signingKey()`**: `hash_hmac( 'sha256', BrokerCredentials::SIGNING_KEY_LABEL, <part of the site secret after the first "|"> )`, where the label is `jmwd-workshop:oauth-authorize`. The whole secret is used when there's no `|`. Before 1.4.0 this was `hash( 'sha256', … )`, which brokers no longer accept.
 
 ## Related
 

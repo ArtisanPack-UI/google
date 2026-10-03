@@ -32,6 +32,9 @@ class OAuthManager
     public function client(): GoogleClient;
     public function brokerClient(): BrokerClient;
     public function isTrustedRenewUrl( ?string $url ): bool;
+
+    // Since 1.4.0
+    public function abandonCallback( string $returnedState ): bool;
 }
 ```
 
@@ -50,7 +53,7 @@ Throws `OAuthException` if the credential driver reports `isConfigured() === fal
 
 ### `reauthorizationUrl( int|string $userId, array $grantedScopes ): string`
 
-Build an incremental-consent URL that only requests scopes not already granted. Uses `include_granted_scopes=true` so Google merges the new grant with the existing one.
+Build an incremental-consent URL that only requests scopes not already granted. Uses `include_granted_scopes=true` so Google merges the new grant with the existing one. In broker mode, where the broker doesn't merge grants, it requests the granted scopes plus the registry's instead.
 
 If `$grantedScopes` already covers everything the registry requires, falls back to requesting the full union — the URL stays valid.
 
@@ -76,6 +79,10 @@ Throws `OAuthException` on:
 - A rejected code exchange — `getError()` carries the error code.
 
 Returns the persisted `GoogleConnection`.
+
+### `abandonCallback( string $returnedState ): bool`
+
+Ends a callback that came back with an `error` instead of a code. Pulls the flow's state, verifier and user ID from the session, and returns whether `$returnedState` matches the stored state (`hash_equals()`). The controller only flashes the callback's own `error` and `renew_url` when this returns `true`.
 
 ### `usesBroker(): bool`
 

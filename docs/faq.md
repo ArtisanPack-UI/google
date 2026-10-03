@@ -115,7 +115,7 @@ Users who were already connected will need to reauthorize — the [connection UI
 
 ### Do users get re-prompted for every scope on incremental consent?
 
-No. The `/reauthorize` route only asks for the delta between what the connection holds and what the registry now requires. `include_granted_scopes=true` tells Google to merge the new grant with the existing one, so the user only approves the new scopes.
+No. The `/reauthorize` route only asks for the delta between what the connection holds and what the registry now requires. `include_granted_scopes=true` tells Google to merge the new grant with the existing one, so the user only approves the new scopes. In broker mode the link asks for every scope the connection needs, since the broker doesn't merge grants; Google still only prompts for the ones the user hasn't approved.
 
 ### Can I remove a scope?
 

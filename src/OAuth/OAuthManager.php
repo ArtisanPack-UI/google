@@ -76,13 +76,27 @@ class OAuthManager
      * nothing is missing the caller should short-circuit; this method still
      * returns a valid URL for the union to keep the API predictable.
      *
+     * In broker mode the broker doesn't send `include_granted_scopes` (it
+     * would merge one site's grants into another's token), so a delta-only
+     * grant would replace the connection's scopes with just the delta. The
+     * broker is asked for everything the connection holds plus everything
+     * the registry requires instead.
+     *
      * @since 1.0.0
+     * @since 1.4.0 Requests the granted and registered scopes together in broker mode.
      *
      * @param  int|string  $userId  The user reauthorizing.
      * @param  array<int, string>  $grantedScopes  Scopes the connection currently holds.
      */
     public function reauthorizationUrl( int|string $userId, array $grantedScopes ): string
     {
+        if ( $this->usesBroker() ) {
+            return $this->buildAuthorizationUrl(
+                $userId,
+                array_values( array_unique( [ ...$grantedScopes, ...$this->scopes->all() ] ) ),
+            );
+        }
+
         $missing = $this->scopes->missing( $grantedScopes );
 
         // Nothing missing → send the full union so the URL is still meaningful
@@ -125,6 +139,24 @@ class OAuthManager
             : $this->client()->exchangeCode( $code, (string) $verifier );
 
         return $this->persist( $userId, $tokens );
+    }
+
+    /**
+     * End a callback that came back with an error instead of a code.
+     *
+     * Pulls the flow's state, verifier and user from the session, as
+     * `handleCallback()` does, and reports whether the returned state was
+     * the one this session started. Only then is the error worth showing:
+     * anyone can link a user to the callback with a made-up `error`.
+     *
+     * @since 1.4.0
+     */
+    public function abandonCallback( string $returnedState ): bool
+    {
+        $storedState = $this->session->pull( self::SESSION_STATE );
+        $this->session->forget( [ self::SESSION_VERIFIER, self::SESSION_USER_ID ] );
+
+        return ! empty( $storedState ) && '' !== $returnedState && hash_equals( (string) $storedState, $returnedState );
     }
 
     /**

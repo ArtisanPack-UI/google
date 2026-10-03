@@ -79,18 +79,54 @@ it( 'refuses to build a broker link when the broker is not configured', function
     expect( fn () => app( OAuthManager::class )->authorizationUrl( 1 ) )->toThrow( OAuthException::class );
 } );
 
-it( 'passes only the missing scopes to the broker on incremental consent', function (): void {
+it( 'asks the broker for the granted and registered scopes together on incremental consent', function (): void {
     Filter::add( 'ap.google.scopes', fn ( array $scopes ): array => [ ...$scopes, 'https://www.googleapis.com/auth/webmasters.readonly' ] );
 
     $url = app( OAuthManager::class )->reauthorizationUrl( 42, [
         'openid',
         'https://www.googleapis.com/auth/userinfo.email',
         'https://www.googleapis.com/auth/userinfo.profile',
+        'https://www.googleapis.com/auth/analytics.readonly',
     ] );
 
     parse_str( parse_url( $url, PHP_URL_QUERY ), $params );
 
-    expect( $params['scopes'] )->toBe( 'https://www.googleapis.com/auth/webmasters.readonly' );
+    // The broker doesn't merge grants, so the delta alone would cost the
+    // connection its earlier scopes, including ones no longer registered.
+    expect( explode( ' ', $params['scopes'] ) )->toEqualCanonicalizing( [
+        'openid',
+        'https://www.googleapis.com/auth/userinfo.email',
+        'https://www.googleapis.com/auth/userinfo.profile',
+        'https://www.googleapis.com/auth/analytics.readonly',
+        'https://www.googleapis.com/auth/webmasters.readonly',
+    ] );
+} );
+
+it( 'keeps every scope the connection held after an incremental consent through the broker', function (): void {
+    Filter::add( 'ap.google.scopes', fn ( array $scopes ): array => [ ...$scopes, 'https://www.googleapis.com/auth/webmasters.readonly' ] );
+    $granted = [
+        'openid',
+        'https://www.googleapis.com/auth/userinfo.email',
+        'https://www.googleapis.com/auth/userinfo.profile',
+        'https://www.googleapis.com/auth/analytics.readonly',
+    ];
+    GoogleConnection::create( [
+        'user_id'       => 42,
+        'refresh_token' => 'r-old',
+        'scopes'        => $granted,
+        'status'        => GoogleConnection::STATUS_CONNECTED,
+    ] );
+
+    $oauth = app( OAuthManager::class );
+    parse_str( parse_url( $oauth->reauthorizationUrl( 42, $granted ), PHP_URL_QUERY ), $params );
+
+    // The broker grants exactly what the link asked for.
+    Http::fake( [ 'workshop.test/*' => Http::response( brokerTokenPayload( [ 'scopes' => explode( ' ', $params['scopes'] ) ] ) ) ] );
+
+    $connection = $oauth->handleCallback( 'c', session( 'google.oauth.state' ) );
+
+    expect( $connection->scopes )->toContain( 'https://www.googleapis.com/auth/analytics.readonly' )
+        ->toContain( 'https://www.googleapis.com/auth/webmasters.readonly' );
 } );
 
 it( 'exchanges the broker code and stores the connection exactly as in direct mode', function (): void {
@@ -212,6 +248,52 @@ it( 'disconnects on a revoked grant reported by the broker', function (): void {
     expect( $connection->fresh()->isConnected() )->toBeFalse();
 } );
 
+it( 'keeps the connection and uses the winner\'s token when the broker reports a superseded refresh', function (): void {
+    $connection = GoogleConnection::create( [
+        'user_id'       => 1,
+        'access_token'  => 'stale',
+        'refresh_token' => 'r1',
+        'expires_at'    => now()->subMinute(),
+        'status'        => GoogleConnection::STATUS_CONNECTED,
+    ] );
+
+    // The other request saves its rotated tokens while this one is at the broker.
+    Http::fake( function () use ( $connection ) {
+        GoogleConnection::findOrFail( $connection->getKey() )->update( [
+            'access_token'  => 'winner-access',
+            'refresh_token' => 'r2',
+            'expires_at'    => now()->addHour(),
+        ] );
+
+        return Http::response( [ 'error' => 'refresh_superseded' ], 409 );
+    } );
+
+    expect( app( TokenManager::class )->getValidAccessToken( $connection ) )->toBe( 'winner-access' );
+    expect( $connection->fresh()->isConnected() )->toBeTrue();
+    expect( $connection->fresh()->refresh_token )->toBe( 'r2' );
+} );
+
+it( 'throws without disconnecting when a superseded refresh left no newer token', function (): void {
+    Http::fake( [ 'workshop.test/*' => Http::response( [ 'error' => 'refresh_superseded' ], 409 ) ] );
+
+    $connection = GoogleConnection::create( [
+        'user_id'       => 1,
+        'access_token'  => 'stale',
+        'refresh_token' => 'r1',
+        'expires_at'    => now()->subMinute(),
+        'status'        => GoogleConnection::STATUS_CONNECTED,
+    ] );
+
+    try {
+        app( TokenManager::class )->refresh( $connection );
+        $this->fail( 'Expected a TokenRefreshException.' );
+    } catch ( TokenRefreshException $e ) {
+        expect( $e->getError() )->toBe( 'refresh_superseded' );
+    }
+
+    expect( $connection->fresh()->isConnected() )->toBeTrue();
+} );
+
 it( 'keeps the connection on a transient broker failure', function (): void {
     Http::fake( [ 'workshop.test/*' => Http::response( [ 'error' => 'temporarily_unavailable' ], 503 ) ] );
 
@@ -274,19 +356,22 @@ describe( 'routes', function (): void {
     } );
 
     it( 'flashes a license_expired error with a trusted renew URL', function (): void {
-        $this->get( '/google/auth/callback?error=license_expired&state=s&renew_url=' . urlencode( 'https://workshop.test/renew' ) )
+        $this->withSession( [ 'google.oauth.state' => 's' ] )
+            ->get( '/google/auth/callback?error=license_expired&state=s&renew_url=' . urlencode( 'https://workshop.test/renew' ) )
             ->assertSessionHas( 'google.error', 'license_expired' )
             ->assertSessionHas( 'google.renew_url', 'https://workshop.test/renew' );
     } );
 
     it( 'drops a renew URL that does not point at the broker', function (): void {
-        $this->get( '/google/auth/callback?error=license_expired&state=s&renew_url=' . urlencode( 'https://evil.test/renew' ) )
+        $this->withSession( [ 'google.oauth.state' => 's' ] )
+            ->get( '/google/auth/callback?error=license_expired&state=s&renew_url=' . urlencode( 'https://evil.test/renew' ) )
             ->assertSessionHas( 'google.error', 'license_expired' )
             ->assertSessionMissing( 'google.renew_url' );
     } );
 
     it( 'drops a forged renew URL that PHP parses to the broker host but a browser does not', function (): void {
-        $this->get( '/google/auth/callback?error=license_expired&state=s&renew_url=' . urlencode( 'https://evil.test\\@workshop.test/renew' ) )
+        $this->withSession( [ 'google.oauth.state' => 's' ] )
+            ->get( '/google/auth/callback?error=license_expired&state=s&renew_url=' . urlencode( 'https://evil.test\\@workshop.test/renew' ) )
             ->assertSessionHas( 'google.error', 'license_expired' )
             ->assertSessionMissing( 'google.renew_url' );
     } );
@@ -294,16 +379,25 @@ describe( 'routes', function (): void {
     it( 'still redirects with the error when the broker URL is insecure', function (): void {
         config()->set( 'google.broker.url', 'http://workshop.example.com' );
 
-        $this->get( '/google/auth/callback?error=license_expired&renew_url=' . urlencode( 'http://workshop.example.com/renew' ) )
+        $this->withSession( [ 'google.oauth.state' => 's' ] )
+            ->get( '/google/auth/callback?error=license_expired&state=s&renew_url=' . urlencode( 'http://workshop.example.com/renew' ) )
             ->assertRedirect()
             ->assertSessionHas( 'google.error', 'license_expired' )
+            ->assertSessionMissing( 'google.renew_url' );
+    } );
+
+    it( 'drops the error and renew URL when the callback state is not the session\'s', function (): void {
+        $this->withSession( [ 'google.oauth.state' => 's' ] )
+            ->get( '/google/auth/callback?error=license_expired&state=forged&renew_url=' . urlencode( 'https://workshop.test/renew' ) )
+            ->assertSessionHas( 'google.error', 'The Google sign-in could not be completed. Please try again.' )
             ->assertSessionMissing( 'google.renew_url' );
     } );
 
     it( 'ignores renew URLs outside broker mode', function (): void {
         config()->set( 'google.mode', 'direct' );
 
-        $this->get( '/google/auth/callback?error=license_expired&renew_url=' . urlencode( 'https://workshop.test/renew' ) )
+        $this->withSession( [ 'google.oauth.state' => 's' ] )
+            ->get( '/google/auth/callback?error=license_expired&state=s&renew_url=' . urlencode( 'https://workshop.test/renew' ) )
             ->assertSessionMissing( 'google.renew_url' );
     } );
 } );
