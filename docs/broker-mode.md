@@ -197,7 +197,7 @@ A 2xx response without a non-empty `access_token` counts as a failure (`exchange
 - **HTTPS only.** The site secret travels as a bearer token, so `BrokerCredentials` refuses a broker URL that isn't `https://` and throws `OAuthException`. Plain `http://` is accepted only for local development hosts: `localhost`, `*.localhost`, `*.test`, `127.*` and `::1`.
 - **Signed, short-lived links.** `/authorize` links are HMAC-signed with a key derived from the site secret and expire after 5 minutes, so the broker can reject forged or replayed links.
 - **State still protects the callback.** The site-generated `state` is checked with `hash_equals()` and pulled from the session, just like direct mode.
-- **Untrusted `renew_url`.** Anyone can put a `renew_url` on the callback query string. It is flashed only when the package is in broker mode, the URL's host matches the configured broker host, and it uses HTTPS. HTTP is allowed only if the broker URL itself is HTTP, so an HTTPS broker can never be downgraded. Anything else is dropped silently.
+- **Untrusted `renew_url`.** Anyone can put a `renew_url` on the callback query string. It is flashed only when the package is in broker mode, the URL's host matches the configured broker host, and it uses HTTPS. HTTP is allowed only if the broker URL itself is HTTP, so an HTTPS broker can never be downgraded. Since 1.3.0, URLs that PHP and browsers could parse to different hosts are also dropped: anything with a backslash, whitespace, a control character or userinfo (`https://evil.test\@broker.test/` looks like the broker to PHP but opens `evil.test` in a browser). Anything else is dropped silently.
 
 ## Using the broker client directly
 

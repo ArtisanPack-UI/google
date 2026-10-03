@@ -46,7 +46,7 @@ protected function redirectWithError( string $error, string $renewUrl ): Redirec
 }
 ```
 
-`redirectWithError()` (since 1.2.0) only flashes `google.renew_url` in [broker mode](Broker-Mode#license-expiry), and only when the URL points at the broker's own host over HTTPS — a `renew_url` on the query string is attacker-controllable, so anything else is dropped.
+`redirectWithError()` (since 1.2.0) only flashes `google.renew_url` in [broker mode](Broker-Mode#license-expiry), and only when the URL points at the broker's own host over HTTPS — a `renew_url` on the query string is attacker-controllable, so anything else is dropped. Since 1.3.0, URLs that PHP and browsers could parse to different hosts (backslashes, whitespace, control characters, userinfo) are dropped too; see [`BrokerClient::isTrustedRenewUrl()`](API-Reference-Broker-Client).
 
 Route: `GET /google/auth/callback` → `google.auth.callback`.
 
