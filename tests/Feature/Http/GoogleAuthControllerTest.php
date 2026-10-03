@@ -69,10 +69,30 @@ it( 'exchanges the code on the callback route', function (): void {
 } );
 
 it( 'redirects with an error flash when the callback carries an error', function (): void {
-    $response = $this->get( '/google/auth/callback?error=access_denied' );
+    $response = $this->withSession( [ 'google.oauth.state' => 'flow-state', 'google.oauth.user_id' => 1 ] )
+        ->get( '/google/auth/callback?error=access_denied&state=flow-state' );
 
     $response->assertRedirect();
     $response->assertSessionHas( 'google.error', 'access_denied' );
+    $response->assertSessionMissing( 'google.oauth.state' );
+    $response->assertSessionMissing( 'google.oauth.user_id' );
+} );
+
+it( 'flashes a generic error when an error callback does not carry the session state', function ( string $query ): void {
+    $response = $this->withSession( [ 'google.oauth.state' => 'flow-state' ] )
+        ->get( '/google/auth/callback?' . $query );
+
+    $response->assertRedirect();
+    $response->assertSessionHas( 'google.error', 'The Google sign-in could not be completed. Please try again.' );
+    $response->assertSessionMissing( 'google.oauth.state' );
+} )->with( [
+    'no state'    => [ 'error=Your+account+was+suspended' ],
+    'wrong state' => [ 'error=Your+account+was+suspended&state=attacker' ],
+] );
+
+it( 'flashes a generic error for an error callback when no flow was started', function (): void {
+    $this->get( '/google/auth/callback?error=access_denied&state=anything' )
+        ->assertSessionHas( 'google.error', 'The Google sign-in could not be completed. Please try again.' );
 } );
 
 it( 'redirects to Google on reauthorize with only the missing scopes', function (): void {

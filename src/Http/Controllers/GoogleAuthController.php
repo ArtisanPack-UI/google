@@ -84,11 +84,23 @@ class GoogleAuthController extends Controller
     /**
      * Handle the OAuth callback from Google.
      *
+     * An `error` is only flashed as-is (with a trusted `renew_url`) when the
+     * callback carries the state this session started; otherwise a generic
+     * error is flashed, so a crafted link can't put words on the page.
+     *
      * @since 1.0.0
+     * @since 1.4.0 Checks state on the error path too.
      */
     public function callback( Request $request ): RedirectResponse
     {
         if ( $error = $request->query( 'error' ) ) {
+            if ( ! $this->oauth->abandonCallback( (string) $request->query( 'state', '' ) ) ) {
+                return $this->redirectAfterError()->with(
+                    'google.error',
+                    __( 'The Google sign-in could not be completed. Please try again.' ),
+                );
+            }
+
             return $this->redirectWithError( (string) $error, (string) $request->query( 'renew_url', '' ) );
         }
 

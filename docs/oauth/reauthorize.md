@@ -50,7 +50,7 @@ public function reauthorizationUrl( int|string $userId, array $grantedScopes ): 
 
 Two behaviors worth noting:
 
-1. **Only the delta is requested** when there are missing scopes. Google merges the new grant with the existing one because we always send `include_granted_scopes=true`, so the user's `grantedScopes` grows without them re-approving old ones.
+1. **Only the delta is requested** when there are missing scopes. Google merges the new grant with the existing one because we always send `include_granted_scopes=true`, so the user's `grantedScopes` grows without them re-approving old ones. In [broker mode](Broker-Mode) the broker doesn't send `include_granted_scopes`, so the link asks for the granted scopes plus the registry's instead.
 2. **Fallback to the full union** when nothing is missing. In practice callers should short-circuit before hitting this method (see [Connection UI](Connection-UI) — the reauthorize banner only shows when `needsReauthorize === true`), but the fallback keeps the API predictable: it always returns a valid authorize URL.
 
 ## Detecting the need

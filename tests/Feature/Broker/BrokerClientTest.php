@@ -43,7 +43,7 @@ it( 'builds a signed authorize link that matches the broker contract', function 
     $expected = hash_hmac(
         'sha256',
         "google\n" . http_build_query( $unsigned, '', '&', PHP_QUERY_RFC3986 ),
-        hash( 'sha256', 'plain-site-secret' ),
+        hash_hmac( 'sha256', 'jmwd-workshop:oauth-authorize', 'plain-site-secret' ),
     );
 
     expect( $params['signature'] )->toBe( $expected );
@@ -57,10 +57,21 @@ it( 'omits scopes so the broker grants every allowed scope', function (): void {
     expect( $params )->not->toHaveKey( 'scopes' );
 } );
 
-it( 'keys signatures with the whole secret when it has no id prefix', function (): void {
-    $credentials = new BrokerCredentials( 'https://workshop.test', 'site-123', 'no-pipe-secret' );
+it( 'derives the signing key from the part of the site secret after the bar', function (): void {
+    $credentials = new BrokerCredentials( 'https://workshop.test', '42', '42|keystone-test-secret' );
 
-    expect( $credentials->signingKey() )->toBe( hash( 'sha256', 'no-pipe-secret' ) );
+    // Fixed vector shared with the broker: hex(HMAC-SHA256(key: secret, message: label)).
+    expect( $credentials->signingKey() )->toBe( 'f8bcb6d68bd8744f4aeaf3346e8a27dc81152888e8d592a1c662e2fbf330ce68' );
+} );
+
+it( 'keys signatures with the whole secret when it has no id prefix', function (): void {
+    $credentials = new BrokerCredentials( 'https://workshop.test', 'site-123', 'keystone-test-secret' );
+
+    expect( $credentials->signingKey() )->toBe( 'f8bcb6d68bd8744f4aeaf3346e8a27dc81152888e8d592a1c662e2fbf330ce68' );
+} );
+
+it( 'never signs with the hash the broker stores at rest', function (): void {
+    expect( $this->credentials->signingKey() )->not->toBe( hash( 'sha256', 'plain-site-secret' ) );
 } );
 
 it( 'exchanges the one-time code at the broker with the site secret as bearer', function (): void {

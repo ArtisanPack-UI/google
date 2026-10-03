@@ -12,6 +12,13 @@ title: Callback
 public function callback( Request $request ): RedirectResponse
 {
     if ( $error = $request->query( 'error' ) ) {
+        if ( ! $this->oauth->abandonCallback( (string) $request->query( 'state', '' ) ) ) {
+            return $this->redirectAfterError()->with(
+                'google.error',
+                __( 'The Google sign-in could not be completed. Please try again.' ),
+            );
+        }
+
         return $this->redirectWithError( (string) $error, (string) $request->query( 'renew_url', '' ) );
     }
 
@@ -54,7 +61,7 @@ Route: `GET /google/auth/callback` → `google.auth.callback`.
 
 The callback URL always ends up hitting one of three outcomes:
 
-1. **`?error=…`** — the user denied consent, Google rejected something, or (broker mode) the broker refused — e.g. `error=license_expired`. Redirect to `redirect_after_error` with `google.error = <error code>`, plus a trusted `google.renew_url` when present.
+1. **`?error=…`** — the user denied consent, Google rejected something, or (broker mode) the broker refused — e.g. `error=license_expired`. `abandonCallback()` pulls the flow from the session. If the callback carries the session's `state`, redirect to `redirect_after_error` with `google.error = <error code>`, plus a trusted `google.renew_url` when present. Otherwise (since 1.4.0) flash a generic error and no `renew_url`, so a crafted link can't put its own text on the page.
 2. **Missing `code` or `state`** — malformed callback. Redirect to `redirect_after_error` with a translated message.
 3. **`OAuthException` from `handleCallback()`** — state mismatch, missing PKCE verifier, or token exchange failed. Redirect to `redirect_after_error` with the exception message.
 

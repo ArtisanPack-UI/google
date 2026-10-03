@@ -105,8 +105,12 @@ The filter receives `[ 'url' => …, 'site_id' => …, 'site_secret' => … ]` f
 ```
 
 - **`expires`**: a Unix timestamp 5 minutes out (`BrokerClient::LINK_TTL_SECONDS`). The broker accepts at most 10 minutes; the shorter window leaves room for clock skew.
-- **`scopes`**: the space-separated scopes to request. On first connect this is the full [registry](Scopes) union. On `/reauthorize` it is only the missing scopes, so incremental consent works the same as in direct mode.
-- **`signature`**: HMAC-SHA256, hex. The parameters (minus `signature`) are key-sorted and RFC 3986 query-encoded, prefixed with `google\n`, and keyed with `sha256( <plain part of the site secret> )`. The plain part is everything after the `|`, or the whole secret if it has no `|`.
+- **`scopes`**: the space-separated scopes to request. On first connect this is the full [registry](Scopes) union. On `/reauthorize` it is everything the connection already holds plus everything the registry requires. The broker doesn't send Google's `include_granted_scopes` (it would merge one site's grants into another site's token), so asking for only the missing scopes would leave the new token with just those.
+- **`signature`**: HMAC-SHA256, hex. The parameters (minus `signature`) are key-sorted and RFC 3986 query-encoded, prefixed with `google\n`, and keyed with the signing key below.
+
+The signing key is `hash_hmac( 'sha256', 'jmwd-workshop:oauth-authorize', <plain part of the site secret> )` (`BrokerCredentials::SIGNING_KEY_LABEL`). The plain part is everything after the `|`, or the whole secret if it has no `|`. It is deliberately not the SHA-256 a broker stores at rest, so a leaked broker database alone can't forge links.
+
+> **Upgrading from 1.2 or 1.3:** those versions keyed signatures with `sha256( <plain part> )`, which brokers no longer accept. Sites registered with a broker before it switched to the derived key need a new site secret from the broker admin (or must register again) before they can connect an account.
 
 ### Callback
 
@@ -153,6 +157,8 @@ refresh_token=…&provider=google
 
 If the broker doesn't return a new refresh token, the stored one is kept.
 
+Refreshes of one connection wait on a cache lock (`Cache::lock`, up to 10 seconds). Once a refresh holds the lock, it re-reads the connection, and if another process already replaced the stale access token with a valid one, that token is returned without spending the refresh token again. A broker that rotates refresh tokens answers a request whose token was rotated moments ago with **HTTP 409** `{"error": "refresh_superseded"}`; the token manager then reuses the connection's newer token if there is one, or throws without disconnecting. Use a cache store that supports locks (Redis, Memcached, database, file or array) and is shared by every process that refreshes tokens.
+
 ## License expiry
 
 A broker can refuse refreshes for a site whose license has lapsed. It answers `/refresh` with **HTTP 402** and `{"error": "license_expired", "renew_url": "…"}`.
@@ -187,6 +193,8 @@ Broker failures surface through the same exception types as direct mode, with th
 | `/token` rejected | `OAuthException` | Broker's `error`, else `exchange_failed` | Unchanged |
 | `/refresh` returns `license_expired` (or a bare 402) | `LicenseExpiredException` | `license_expired` | Stays connected |
 | `/refresh` returns `invalid_grant` | `TokenRefreshException` | `invalid_grant` | **Disconnected** (`Refresh token revoked or expired.`) |
+| `/refresh` returns `refresh_superseded` (409) and no newer token was saved | `TokenRefreshException` | `refresh_superseded` | Stays connected |
+| Another refresh held the lock for over 10 seconds | `TokenRefreshException` | `refresh_in_progress` | Stays connected |
 | `/refresh` other failure | `TokenRefreshException` | Broker's `error`, else `refresh_failed` | Stays connected |
 | Broker not configured on refresh | `TokenRefreshException` | `broker_not_configured` | Stays connected |
 
@@ -196,7 +204,7 @@ A 2xx response without a non-empty `access_token` counts as a failure (`exchange
 
 - **HTTPS only.** The site secret travels as a bearer token, so `BrokerCredentials` refuses a broker URL that isn't `https://` and throws `OAuthException`. Plain `http://` is accepted only for local development hosts: `localhost`, `*.localhost`, `*.test`, `127.*` and `::1`.
 - **Signed, short-lived links.** `/authorize` links are HMAC-signed with a key derived from the site secret and expire after 5 minutes, so the broker can reject forged or replayed links.
-- **State still protects the callback.** The site-generated `state` is checked with `hash_equals()` and pulled from the session, just like direct mode.
+- **State still protects the callback.** The site-generated `state` is checked with `hash_equals()` and pulled from the session, just like direct mode. Since 1.4.0 this includes callbacks that carry an `error`: one without the session's state gets a generic error flashed instead of its own `error` and `renew_url`, so a crafted link can't put words on the page.
 - **Untrusted `renew_url`.** Anyone can put a `renew_url` on the callback query string. It is flashed only when the package is in broker mode, the URL's host matches the configured broker host, and it uses HTTPS. HTTP is allowed only if the broker URL itself is HTTP, so an HTTPS broker can never be downgraded. Since 1.3.0, URLs that PHP and browsers could parse to different hosts are also dropped: anything with a backslash, whitespace, a control character or userinfo (`https://evil.test\@broker.test/` looks like the broker to PHP but opens `evil.test` in a browser). Anything else is dropped silently.
 
 ## Using the broker client directly
